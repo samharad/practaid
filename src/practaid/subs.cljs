@@ -1,6 +1,7 @@
 (ns practaid.subs
   (:require
-    [re-frame.core :as rf]))
+    [re-frame.core :as rf]
+    [practaid.db :as q]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tier 1
@@ -24,7 +25,7 @@
 (rf/reg-sub
   ::track
   (fn [db]
-    (:track db)))
+    (q/playback-track db)))
 
 (rf/reg-sub
   ::external-playback-state
@@ -54,7 +55,7 @@
 (rf/reg-sub
   ::player-pos-ms
   (fn [db]
-    (:player-pos-ms db)))
+    (q/player-pos-ms db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tier 2

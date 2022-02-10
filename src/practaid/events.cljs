@@ -248,7 +248,8 @@
   ::refresh-track-analysis
   [check-spec-interceptor]
   (fn [{:keys [db]} _]
-    (let [{:keys [access-token track external-playback-state]} db
+    (let [{:keys [access-token external-playback-state]} db
+          track (db/playback-track db)
           track-id (or (:id track)
                        (get-in external-playback-state [:item :id]))]
       (when track-id
@@ -357,17 +358,15 @@
   [check-spec-interceptor]
   (fn [{:keys [db]} [_ js-state]]
     (let [state (js->clj js-state :keywordize-keys true)
-          {old-track :track} db
+          old-track (db/playback-track db)
           new-track (get-in state [:track_window :current_track])
           is-different-track (not= (:id old-track) (:id new-track))
           clear-looper (when is-different-track
                          [:dispatch [::clear-looper]])]
       {:db (-> db
-               (assoc :is-paused (:paused state))
-               (assoc :track new-track)
-               (assoc :player-pos-ms (:position state)))
+               (assoc :playback-state state))
        ;; TODO I should be conditional on the track ID changing!
-       :fx [[:dispatch [::refresh-track-analysis]]
+       :fx [(when is-different-track [:dispatch [::refresh-track-analysis]])
             clear-looper]})))
 
 
@@ -387,16 +386,10 @@
           [:dispatch [::refresh-recently-played]]]}))
 
 (rf/reg-event-db
-  ::set-player-pos-ms
-  [check-spec-interceptor]
-  (fn [db [_ player-pos-ms]]
-    (assoc db :player-pos-ms player-pos-ms)))
-
-(rf/reg-event-db
   ::set-player-pos-query-interval-id
   [check-spec-interceptor]
   (fn [db [_ id]]
-    (assoc db :player-pos-query-interval id)))
+    (assoc db :player-pos-query-interval-id id)))
 
 (rf/reg-event-fx
   ::clear-looper
@@ -443,12 +436,12 @@
   [check-spec-interceptor]
   (fn [{:keys [db]} _]
     (let [{:keys [player
-                  is-paused
-                  player-pos-query-interval
+                  player-pos-query-interval-id
                   loop-timeout-id
                   loop-start-ms
-                  loop-end-ms
-                  player-pos-ms]} db
+                  loop-end-ms]} db
+          player-pos-ms (db/player-pos-ms db)
+          is-paused (db/is-paused db)
           is-paused' (not is-paused)
           action (if is-paused'
                    (fn [^SpotifyWebApi player] (.pause player))
@@ -470,19 +463,18 @@
                                              :timeout-ms (- loop-end-ms player-pos-ms)
                                              :on-set [::set-loop-timeout-id]}])
 
-          clear-pos-interval (when player-pos-query-interval
-                               [::clear-interval player-pos-query-interval])
+          clear-pos-interval (when player-pos-query-interval-id
+                               [::clear-interval player-pos-query-interval-id])
 
           set-pos-interval (when (not is-paused')
                              [::set-interval {:f #(.then (.getCurrentState player)
                                                          (fn [state]
-                                                           (rf/dispatch [::set-player-pos-ms (.-position state)])))
+                                                           (rf/dispatch [::player-state-changed state])))
                                               :interval-ms 200
                                               :on-set [::set-player-pos-query-interval-id]}])]
 
       {:db (-> db
-               (assoc :is-paused is-paused')
-               (assoc :player-pos-query-interval nil))
+               (assoc :player-pos-query-interval-id nil))
        :fx [update-player
             clear-loop-timeout
             set-loop-timeout

@@ -2,6 +2,10 @@
   (:require [cljs.spec.alpha :as s]
             [clojure.set :as set]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Spec
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; Spotify ------------------------------------------------
 
 (s/def :spot.track/id string?)
@@ -46,15 +50,12 @@
 (s/def ::external-playback-state any?)
 
 (s/def ::player any?)
-(s/def ::playback-state :spot/playback-state)
+(s/def ::playback-state (s/nilable :spot/playback-state))
 
 
-(s/def ::is-paused boolean?)
 (s/def ::track-analysis any?)
-(s/def ::track any?)
 
-(s/def ::player-pos-ms (s/nilable integer?))
-(s/def ::player-pos-query-interval any?)
+(s/def ::player-pos-query-interval-id (s/nilable string?))
 
 (s/def ::loop-start-ms (s/nilable integer?))
 (s/def ::loop-end-ms(s/nilable integer?))
@@ -74,13 +75,11 @@
                                   ::external-playback-state
 
                                   ::player
+                                  ::playback-state
 
-                                  ::is-paused
                                   ::track-analysis
-                                  ::track
 
-                                  ::player-pos-ms
-                                  ::player-pos-query-interval
+                                  ::player-pos-query-interval-id
 
                                   ::loop-start-ms
                                   ::loop-end-ms
@@ -101,31 +100,61 @@
                       false)
                     true)))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Default
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn default-db []
   {,
+   ;; Auth ------------------------------------------------
    :access-token nil
    :nonce nil
    :code-verifier nil
 
+   ;; Routing ---------------------------------------------
    :current-route nil
 
-   :device-id nil
-   :is-taking-over-playback false
+   ;; Foreign ---------------------------------------------
    :external-playback-state nil
-
-   :player nil
-
-   :is-paused false
    :track-analysis nil
-   :track nil
+   :recently-played nil
 
-   :player-pos-ms nil
-   :player-pos-query-interval nil
+   ;; Player ----------------------------------------------
+   :player nil
+   :playback-state nil
+   :device-id nil
 
+   ;; Looping & playback ----------------------------------
    :loop-start-ms nil
    :loop-end-ms nil
    :loop-timeout-id nil
+   :player-pos-query-interval-id nil
 
-   :recently-played nil
-   ,})
+   ;; Load flags -------------------------------------------
+   :is-taking-over-playback false
+
+                 ,})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Queries
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn is-paused [db]
+  (get-in db [:playback-state :paused]))
+
+(defn playback-track [db]
+  (get-in db [:playback-state :track_window :current_track]))
+
+(defn player-pos-ms [db]
+  (get-in db [:playback-state :position]))
+
+
+
+
+
+
+
+
+
 
