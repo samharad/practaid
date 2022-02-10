@@ -55,11 +55,11 @@
 
 (s/def ::track-analysis any?)
 
-(s/def ::player-pos-query-interval-id (s/nilable string?))
+(s/def ::player-pos-query-interval-id (s/nilable any?))
 
 (s/def ::loop-start-ms (s/nilable integer?))
 (s/def ::loop-end-ms(s/nilable integer?))
-(s/def ::loop-timeout-id any?)
+(s/def ::loop-timeout-id (s/nilable any?))
 
 (s/def ::recently-played any?)
 
