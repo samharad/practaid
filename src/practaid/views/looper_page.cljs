@@ -170,6 +170,17 @@
                                :on-prev #(rf/dispatch [:practaid.events/prev-track])}])
       (and loudnesses
            [:div.field
+            [:div {:style {:position "relative"
+                           :height "20px"}}
+             [:input {:type "number"
+                      :style {:width "60px"
+                              :left (str (* 100 defaulted-loop-start-frac) "%")
+                              :position "absolute"}
+                              ;:transform "translate(-14px)"}
+                      :value defaulted-loop-start-ms
+                      :on-blur #(rf/dispatch [:practaid.events/reset-looper])
+                      :on-change #(rf/dispatch [:practaid.events/attempt-change-loop-start (-> % .-target .-value)
+                                                                                           defaulted-loop-end-ms])}]]
             [slider {:min       0
                      :max       track-duration-ms
                      :value     defaulted-loop-start-ms
@@ -188,3 +199,14 @@
                                                                                         defaulted-loop-start-ms])
                      :on-commit #(rf/dispatch [:practaid.events/reset-looper])
                      :disabled  (not is-playback-ours)}]])]]))
+            ;[:input {:type "number"
+            ;         :style {:max-width "40px"
+            ;                 :left (str (* 100 defaulted-loop-end-frac) "%")
+            ;                 :position "absolute"
+            ;                 :translate "14px"}
+            ;         :value defaulted-loop-end-ms
+            ;         :on-change #(do
+            ;                       (rf/dispatch [:practaid.events/attempt-change-loop-end (-> % .-target .-value)
+            ;                                      defaulted-loop-start-ms])
+            ;                       (rf/dispatch [:practaid.events/reset-looper]))}]])]]))
+

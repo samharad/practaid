@@ -37,9 +37,10 @@
 
 ;; Auth ---------------------------------------------------
 
-(s/def ::access-token (s/nilable string?))
 (s/def ::nonce (s/nilable string?))
 (s/def ::code-verifier (s/nilable string?))
+(s/def ::is-authorized boolean?)
+(s/def ::refresh-token-timeout-id (s/nilable any?))
 
 ;; Route --------------------------------------------------
 
@@ -64,9 +65,10 @@
 (s/def ::recently-played any?)
 
 (s/def ::db-keys (s/keys :req-un [,
-                                  ::access-token
                                   ::nonce
                                   ::code-verifier
+                                  ::is-authorized
+                                  ::refresh-token-timeout-id
 
                                   ::current-route
 
@@ -108,9 +110,10 @@
 (defn default-db []
   {,
    ;; Auth ------------------------------------------------
-   :access-token nil
    :nonce nil
    :code-verifier nil
+   :is-authorized false
+   :refresh-token-timeout-id nil
 
    ;; Routing ---------------------------------------------
    :current-route nil
