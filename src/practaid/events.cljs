@@ -9,7 +9,8 @@
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [cljs.core.async :refer [go <!]]
-    [cljs.core.async.interop :refer-macros [<p!]])
+    [cljs.core.async.interop :refer-macros [<p!]]
+    [re-pressed.core :as rp])
   (:require ["spotify-web-api-js" :as SpotifyWebApi]
             [cljs.spec.alpha :as s]))
 
@@ -64,10 +65,12 @@
 (rf/reg-event-fx
   ::http-request-failure
   [check-db-spec-interceptor]
-  (fn [_ [_ err]]
-    ;; Innocent side effect
-    (js/console.error (clj->js err))
-    {}))
+  (fn [_ [_ result]]
+    (let [{:keys [status]} result]
+      (if (#{401} status)
+        {:fx [[:dispatch [::reset-app-completely]]]}
+        ;; Innocent side effect
+        (js/console.error result)))))
 
 (rf/reg-fx
   ::clear-timeout
@@ -96,6 +99,17 @@
 
 ;; Initialization ----------------------------------------
 
+(def space-key-code 32)
+(def p-key-code 80)
+(def enter-key-code 13)
+(def mac-enter-key-code 3)
+(def left-key-code 37)
+(def right-key-code 39)
+(def up-key-code 38)
+(def down-key-code 40)
+
+(def keypress-looper-step-ms 10)
+
 (rf/reg-event-fx
   ::initialize-app
   [inject-store
@@ -103,35 +117,68 @@
    check-store-spec-interceptor]
   (fn [{:keys [store]} _]
     (let [{:keys [access-token expires-at refresh-token]} store
-          _ (println [access-token expires-at refresh-token])
           is-expired (boolean (or (not expires-at)
                                   (< (js/Date. expires-at) (js/Date.))))
           is-authorized (boolean (and access-token (not is-expired)))
-          should-attempt-refresh (boolean (and refresh-token is-expired))
           db (-> (db/default-db)
                  (assoc :is-authorized is-authorized))
-          fx (cond
-               ;; If authorized, just do the basics
-               is-authorized [[:dispatch [::initialize-looper-page]]]
-               ;; Or, kick off the refresh attempt
-               should-attempt-refresh [[:dispatch [::refresh-access-token]]] ; TODO
-               ;; Or, NOT AUTH'D, i.e. homepage will be shown
-               :else [])]
+          init-looper-page (when is-authorized
+                             [:dispatch [::initialize-looper-page]])]
       {:db db
-       :fx fx})))
+       :fx [[:dispatch [::rp/add-keyboard-event-listener "keydown"]]
+            [:dispatch [::rp/add-keyboard-event-listener "keyup"]]
+            init-looper-page
+            [:dispatch [::rp/set-keyup-rules {:event-keys [[[::reset-looper nil]
+                                                            [{:keyCode left-key-code}]
+                                                            [{:keyCode right-key-code}]
+                                                            [{:keyCode up-key-code}]
+                                                            [{:keyCode down-key-code}]]]
+                                              :always-listen-keys [{:keyCode left-key-code}
+                                                                   {:keyCode right-key-code}
+                                                                   {:keyCode up-key-code}
+                                                                   {:keyCode down-key-code}]}]]
+            [:dispatch [::rp/set-keydown-rules {:event-keys [[[::toggle-play]
+                                                              [{:keyCode space-key-code}]
+                                                              [{:keyCode p-key-code}]]
 
-;(rf/reg-event-fx
-;  ::initialize-db
-;  [inject-store
-;   check-db-spec-interceptor
-;   check-store-spec-interceptor]
-;  (fn [{:keys [store]} _]
-;    (println "INITIALIZING DB")
-;    (let [{:keys [access-token expires-at]} store
-;           is-authorized (boolean (and access-token
-;                                       (< (js/Date. expires-at) (js/Date.))))]
-;      {:db (-> (db/default-db)
-;               (assoc :is-authorized is-authorized))})))
+                                                             [[::reset-looper nil]
+                                                              [{:keyCode enter-key-code}]
+                                                              [{:keyCode mac-enter-key-code}]]
+
+                                                             [[::attempt-increment-loop-start (- keypress-looper-step-ms)]
+                                                              [{:keyCode left-key-code}]]
+                                                             [[::attempt-increment-loop-start keypress-looper-step-ms]
+                                                              [{:keyCode right-key-code}]]
+                                                             [[::attempt-increment-loop-end (- keypress-looper-step-ms)]
+                                                              [{:keyCode down-key-code}]]
+                                                             [[::attempt-increment-loop-end keypress-looper-step-ms]
+                                                              [{:keyCode up-key-code}]]
+                                                             ,]
+                                                :always-listen-keys [{:keyCode space-key-code}
+                                                                     {:keyCode p-key-code}
+                                                                     {:keyCode enter-key-code}
+                                                                     {:keyCode mac-enter-key-code}
+                                                                     {:keyCode left-key-code}
+                                                                     {:keyCode right-key-code}
+                                                                     {:keyCode up-key-code}
+                                                                     {:keyCode down-key-code}]
+                                                :prevent-default-keys [{:keyCode space-key-code}
+                                                                       {:keyCode p-key-code}
+                                                                       {:keyCode enter-key-code}
+                                                                       {:keyCode mac-enter-key-code}
+                                                                       {:keyCode left-key-code}
+                                                                       {:keyCode right-key-code}
+                                                                       {:keyCode up-key-code}
+                                                                       {:keyCode down-key-code}]}]]]})))
+
+(rf/reg-event-fx
+  ::reset-app-completely
+  [inject-store
+   check-db-spec-interceptor
+   check-store-spec-interceptor]
+  (fn [_ _]
+    {:fx [[:store {}]
+          [::reload-page nil]]}))
 
 
 
@@ -163,6 +210,11 @@
     (-> js/window
         (.-location)
         (.assign url))))
+
+(rf/reg-fx
+  ::reload-page
+  (fn [_]
+    (.reload js/location)))
 
 
 
@@ -201,39 +253,15 @@
                     :on-failure [::http-request-failure]}})))
 
 (rf/reg-event-fx
-  ::schedule-token-refresh
-  [inject-store
-   check-db-spec-interceptor]
-  (fn [{:keys [store]} _]
-    (let [{:keys [expires-at]} store
-          timeout-ms (- (.getTime (js/Date. expires-at))
-                        (.getTime (js/Date.)))]
-      (println timeout-ms)
-      (if (pos? timeout-ms)
-        {:fx [[::set-timeout {:f #(rf/dispatch [::refresh-access-token])
-                              :timeout-ms timeout-ms
-                              :on-set [::set-refresh-token-timeout-id]}]]}
-        (do
-          (js/console.warn "Negative timeout!")
-          {})))))
-
-(rf/reg-event-fx
   ::confirm-complete-auth-flow
   [(rf/inject-cofx :store)
    check-db-spec-interceptor]
   (fn [{:keys [db store]} [_ {:keys [access_token expires_in refresh_token token_type scope]}]]
     {:db (assoc db :is-authorized true)
      :fx [[:store (assoc store :access-token access_token
-                               :refresh-token refresh_token
                                :expires-at (expires-at (js/Date.) expires_in))]
           [:dispatch [::initialize-looper-page]]
           [:dispatch [::navigate :routes/home]]]}))
-
-(rf/reg-event-fx
-  ::set-refresh-token-timeout-id
-  [check-db-spec-interceptor]
-  (fn [{:keys [db]} [_ id]]
-    {:db (assoc db :refresh-token-timeout-id id)}))
 
 (rf/reg-fx
   ::create-initial-auth-data
@@ -247,36 +275,6 @@
 
 
 ;; HTTP ---------------------------------------------------
-
-(rf/reg-event-fx
-  ::refresh-access-token
-  [inject-store
-   check-db-spec-interceptor
-   check-store-spec-interceptor]
-  (fn [{:keys [store]} _]
-    (let [{:keys [refresh-token]} store]
-      {:fx [[:http-xhrio {:method :post
-                          :uri"https://accounts.spotify.com/api/token"
-                          :headers {"Content-Type" "application/x-www-form-urlencoded"}
-                          :response-format (ajax/json-response-format {:keywords? true})
-                          :body (js/URLSearchParams. (clj->js {"grant_type" "refresh_token"
-                                                               "refresh_token" refresh-token
-                                                               "client_id" auth/client-id}))
-                          :on-success [::confirm-refresh-access-token]
-                          ;; TODO: fails with 400 status code if 'Refresh token revoked'
-                          :on-failure nil}]]})))
-
-(rf/reg-event-fx
-  ::confirm-refresh-access-token
-  [inject-store
-   check-db-spec-interceptor
-   check-store-spec-interceptor]
-  (fn [{:keys [db store]} [_ res]]
-    (let [{:keys [access_token expires_in]} res
-          expires-at (expires-at (js/Date.) expires_in)]
-      {:store (assoc store :access-token access_token
-                           :expires-at expires-at)})))
-
 
 (rf/reg-event-fx
   ::refresh-recently-played
@@ -333,7 +331,8 @@
                       :uri "https://api.spotify.com/v1/me/player"
                       :headers {"Authorization" (str "Bearer " access-token)
                                 "Content-Type" "application/json"}
-                      :body (.stringify js/JSON (clj->js {:device_ids [device-id]}))
+                      :body (.stringify js/JSON (clj->js {:device_ids [device-id]
+                                                          :play true}))
                       :response-format (ajax/json-response-format {:keywords? true})
                       ;; TODO
                       :on-success [::confirm-takeover-playback]
@@ -472,23 +471,27 @@
   (fn [{:keys [db]} [_ js-state]]
     (let [{:keys [player loop-timeout-id loop-start-ms loop-end-ms player-pos-query-interval-id]} db
           prev-paused (db/is-paused db)
-          player-pos-ms (db/player-pos-ms db)
           state (js->clj js-state :keywordize-keys true)
+          player-pos-ms (get-in state [:position])
           old-track (db/playback-track db)
           new-track (get-in state [:track_window :current_track])
           is-different-track (not= (:id old-track) (:id new-track))
           clear-looper (when is-different-track
                          [:dispatch [::clear-looper]])
-          db (assoc db :playback-state state)
+          db (assoc db :playback-state state
+                       :player-pos-ms player-pos-ms)
           is-paused (db/is-paused db)
-          set-pos-interval (when (and prev-paused (not is-paused))
-                             [::set-interval {:f #(.then (.getCurrentState player)
-                                                       (fn [state]
-                                                         (rf/dispatch [::player-state-changed state])))
-                                              :interval-ms 200
+          interval-ms 200
+          set-pos-interval (when (or (nil? prev-paused)
+                                     (and prev-paused (not is-paused)))
+                             [::set-interval {:f #(rf/dispatch [::increment-player-pos-ms interval-ms])
+                                              :interval-ms interval-ms
                                               :on-set [::set-player-pos-query-interval-id]}])
           clear-pos-interval (when (and (not prev-paused) is-paused player-pos-query-interval-id)
                                [::clear-interval player-pos-query-interval-id])
+          db (if clear-pos-interval
+               (assoc db :player-pos-query-interval-id nil)
+               db)
           clear-loop-timeout (when (and (not prev-paused) is-paused loop-timeout-id)
                                [::clear-timeout loop-timeout-id])
           db (if clear-loop-timeout
@@ -507,15 +510,26 @@
             clear-loop-timeout
             set-loop-timeout]})))
 
+(rf/reg-event-db
+  ::increment-player-pos-ms
+  [check-db-spec-interceptor]
+  (fn [db [_ increment-val]]
+    (update db :player-pos-ms + increment-val)))
+
 (rf/reg-event-fx
   ::player-requests-access-token
   [inject-store
    check-db-spec-interceptor
    check-store-spec-interceptor]
   (fn [{:keys [store]} [_ callback]]
-    (let [{:keys [access-token]} store]
-      {:fx [[::exec-player-callback {:callback callback
-                                     :access-token access-token}]]})))
+    (let [{:keys [access-token]} store
+          is-expired (boolean (or (not expires-at)
+                                  (< (js/Date. expires-at) (js/Date.))))
+          fx (if is-expired
+               [[:dispatch [::reset-app-completely]]]
+               [[::exec-player-callback {:callback callback
+                                         :access-token access-token}]])]
+      {:fx fx})))
 
 (rf/reg-fx
   ::exec-player-callback
@@ -524,6 +538,16 @@
 
 
 ;; Looper page---------------------------------------------
+
+(rf/reg-event-fx
+  ::seek-player
+  [check-db-spec-interceptor]
+  (fn [{:keys [db]} [_ pos-frac]]
+    (let [item (db/playback-track db)
+          track-duration-ms (:duration_ms item)]
+      (if track-duration-ms
+        {:fx [[:dispatch [::reset-looper (* track-duration-ms pos-frac)]]]}
+        {}))))
 
 (rf/reg-event-fx
   ::initialize-looper-page
@@ -536,8 +560,7 @@
           [::set-interval {:f #(rf/dispatch [::refresh-playback-state])
                            :interval-ms 5000}]
           [:dispatch [::refresh-track-analysis]]
-          [:dispatch [::refresh-recently-played]]
-          [:dispatch [::schedule-token-refresh]]]}))
+          [:dispatch [::refresh-recently-played]]]}))
 
 (rf/reg-event-db
   ::set-player-pos-query-interval-id
@@ -558,22 +581,35 @@
                (assoc :loop-timeout-id nil))
        :fx [clear-loop-timeout]})))
 
+(rf/reg-event-fx
+  ::unset-loop
+  [check-db-spec-interceptor]
+  (fn [{:keys [db]} _]
+    (let [{:keys [loop-timeout-id]} db
+          clear-timeout (when loop-timeout-id
+                          [::clear-timeout loop-timeout-id])]
+      {:db (assoc db :loop-timeout-id nil
+                     :loop-start-ms nil
+                     :loop-end-ms nil)
+       :fx [clear-timeout]})))
 
 (rf/reg-event-fx
   ::reset-looper
   [check-db-spec-interceptor]
-  (fn [{:keys [db]} _]
+  (fn [{:keys [db]} [_ seek-to-ms]]
     (let [{:keys [loop-start-ms loop-end-ms loop-timeout-id player]} db
+          is-paused (db/is-paused db)
           clear-existing (when loop-timeout-id
                            [::clear-timeout loop-timeout-id])
-          seek-player (when (and player loop-start-ms loop-end-ms)
+          seek-player (when (or seek-to-ms (and player loop-start-ms loop-end-ms))
                         [::player {:player player
-                                   :action #(.seek ^SpotifyWebApi % loop-start-ms)
+                                   :action #(.then (.seek ^SpotifyWebApi % (or seek-to-ms loop-start-ms))
+                                                   (println "Seeked!"))
                                    :on-failure #(js/console.error %)}])
-          set-timeout (when (and player loop-start-ms loop-end-ms)
+          set-timeout (when (and player loop-start-ms loop-end-ms (not is-paused))
                         [::set-timeout {:f #(rf/dispatch [::reset-looper])
                                         ;; TODO?
-                                        :timeout-ms (- loop-end-ms loop-start-ms)
+                                        :timeout-ms (- loop-end-ms (or seek-to-ms loop-start-ms))
                                         :on-set [::set-loop-timeout-id]}])]
       {:db (assoc db :loop-timeout-id nil)
        :fx [clear-existing
@@ -599,8 +635,7 @@
           update-player [::player {:player player
                                    :action action
                                    :on-failure #(js/console.error "Failed to toggle!")}]]
-      {:db (-> db
-               (assoc :player-pos-query-interval-id nil))
+      {:db (-> db)
        :fx [update-player]})))
 
 (rf/reg-event-fx
@@ -626,19 +661,44 @@
 (def min-loop-length-ms 2000)
 
 (rf/reg-event-db
-  ::attempt-change-loop-start
+  ::attempt-set-loop-start
   [check-db-spec-interceptor]
   (fn [db [_ start-ms end-ms]]
-    (println start-ms)
     (assoc db :loop-start-ms (min (int start-ms)
                                   (- end-ms min-loop-length-ms)))))
 
 (rf/reg-event-db
-  ::attempt-change-loop-end
+  ::attempt-set-loop-end
   [check-db-spec-interceptor]
   (fn [db [_ end-ms start-ms]]
     (assoc db :loop-end-ms (max (int end-ms)
                                 (+ start-ms min-loop-length-ms)))))
+
+(rf/reg-event-db
+  ::attempt-increment-loop-start
+  [check-db-spec-interceptor]
+  (fn [db [_ amt]]
+    (let [{:keys [loop-start-ms loop-end-ms]} db
+          item (db/playback-track db)
+          track-duration-ms (:duration_ms item)
+          ceiling (if loop-end-ms
+                    (- loop-end-ms min-loop-length-ms)
+                    track-duration-ms)]
+      (assoc db :loop-start-ms (max 0 (min (+ loop-start-ms amt)
+                                           ceiling))))))
+
+(rf/reg-event-db
+  ::attempt-increment-loop-end
+  [check-db-spec-interceptor]
+  (fn [db [_ amt]]
+    (let [{:keys [loop-start-ms loop-end-ms]} db
+          item (db/playback-track db)
+          track-duration-ms (:duration_ms item)
+          floor (if loop-start-ms
+                  (+ loop-start-ms min-loop-length-ms)
+                  0)]
+      (assoc db :loop-end-ms (min track-duration-ms (max (+ (or loop-end-ms track-duration-ms) amt)
+                                                         floor))))))
 
 (rf/reg-fx
   ::player

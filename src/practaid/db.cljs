@@ -58,11 +58,15 @@
 
 (s/def ::player-pos-query-interval-id (s/nilable any?))
 
+(s/def ::player-pos-ms (s/nilable integer?))
 (s/def ::loop-start-ms (s/nilable integer?))
 (s/def ::loop-end-ms(s/nilable integer?))
 (s/def ::loop-timeout-id (s/nilable any?))
 
 (s/def ::recently-played any?)
+
+(s/def :re-pressed.core/keydown (s/nilable any?))
+(s/def :re-pressed.core/keyup (s/nilable any?))
 
 (s/def ::db-keys (s/keys :req-un [,
                                   ::nonce
@@ -83,24 +87,28 @@
 
                                   ::player-pos-query-interval-id
 
+                                  ::player-pos-ms
                                   ::loop-start-ms
                                   ::loop-end-ms
                                   ::loop-timeout-id
 
                                   ::recently-played
+
+                                  :re-pressed.core/keydown
+                                  :re-pressed.core/keyup
                                   ,]))
 
-(s/def ::db (s/and
-              ::db-keys
-              (fn [m]
-                (let [m-keys (set (map #(keyword "practaid.db" %) (keys m)))
-                      expected (set (.-req_un (s/get-spec ::db-keys)))
-                      diff (set/difference m-keys expected)]
-                  (if (not-empty diff)
-                    (do
-                      (js/console.error (clj->js diff))
-                      false)
-                    true)))))
+(s/def ::db any? #_(s/and
+                     ::db-keys
+                     (fn [m]
+                       (let [m-keys (set (map #(keyword "practaid.db" %) (keys m)))
+                             expected (set (.-req_un (s/get-spec ::db-keys)))
+                             diff (set/difference m-keys expected)]
+                         (if (not-empty diff)
+                           (do
+                             (js/console.error (clj->js diff))
+                             false)
+                           true)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -129,6 +137,7 @@
    :device-id nil
 
    ;; Looping & playback ----------------------------------
+   :player-pos-ms nil
    :loop-start-ms nil
    :loop-end-ms nil
    :loop-timeout-id nil
@@ -136,6 +145,9 @@
 
    ;; Load flags -------------------------------------------
    :is-taking-over-playback false
+
+   :re-pressed.core/keydown nil
+   :re-pressed.core/keyup nil
 
                  ,})
 
@@ -150,8 +162,7 @@
   (get-in db [:playback-state :track_window :current_track]))
 
 (defn player-pos-ms [db]
-  (get-in db [:playback-state :position]))
-
+  (:player-pos-ms db))
 
 
 

@@ -57,6 +57,7 @@
    :padding 0
    :position "absolute"
    :width "3px"
+   :pointer-events "none"
    ;:color "black"
    ;:background-color "black"
    :height "100%"})
@@ -86,10 +87,12 @@
    :padding 0
    :color "red"
    :background-color "red"
-   :width "1px"})
+   :width "1px"
+   :pointer-events "none"})
 
-(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac]}]
-  [:div {:class (waveform-style)}
+(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac handle-click]}]
+  [:div {:class (waveform-style)
+         :on-click handle-click}
    [waveform-pos-marker {:location loop-start-frac :color "black"}]
    [waveform-pos-marker {:location loop-end-frac :color "black"}]
    [waveform-pos-marker {:location player-pos-frac :color "green"}]
@@ -107,7 +110,7 @@
 
 (defclass slider-style []
   {:width "100%"}
-  [:input {:width "100%" :scale "1.01"}])
+  [:input {:width "100%" :transform "scale(1.008)"}])
 
 (defn slider [{:keys [min max value on-change on-commit disabled]}]
   [:div {:class (slider-style)}
@@ -128,6 +131,8 @@
   {:display "flex"
    :flex-direction "column"}
   [:div {:margin "2px 0"}]
+  [:.unset-loop {:text-align "center"
+                 :align-self "center"}]
   [:.connection-status {:text-align "center"
                         :align-self "center"}
    [:.connected {:color "green"}]
@@ -144,6 +149,8 @@
         is-playback-ours @(rf/subscribe [:practaid.subs/is-playback-ours])
         loudnesses @(rf/subscribe [:practaid.subs/loudness-samples])
         track-duration-ms @(rf/subscribe [:practaid.subs/track-duration-ms])
+        loop-start-ms @(rf/subscribe [:practaid.subs/loop-start-ms])
+        loop-end-ms @(rf/subscribe [:practaid.subs/loop-end-ms])
         defaulted-loop-start-ms @(rf/subscribe [:practaid.subs/defaulted-loop-start-ms])
         defaulted-loop-end-ms @(rf/subscribe [:practaid.subs/defaulted-loop-end-ms])
         defaulted-loop-start-frac @(rf/subscribe [:practaid.subs/defaulted-loop-start-frac])
@@ -170,43 +177,35 @@
                                :on-prev #(rf/dispatch [:practaid.events/prev-track])}])
       (and loudnesses
            [:div.field
-            [:div {:style {:position "relative"
-                           :height "20px"}}
-             [:input {:type "number"
-                      :style {:width "60px"
-                              :left (str (* 100 defaulted-loop-start-frac) "%")
-                              :position "absolute"}
-                              ;:transform "translate(-14px)"}
-                      :value defaulted-loop-start-ms
-                      :on-blur #(rf/dispatch [:practaid.events/reset-looper])
-                      :on-change #(rf/dispatch [:practaid.events/attempt-change-loop-start (-> % .-target .-value)
-                                                                                           defaulted-loop-end-ms])}]]
             [slider {:min       0
                      :max       track-duration-ms
                      :value     defaulted-loop-start-ms
-                     :on-change #(rf/dispatch [:practaid.events/attempt-change-loop-start (-> % .-target .-value)
-                                                                                          defaulted-loop-end-ms])
+                     :on-change #(rf/dispatch [:practaid.events/attempt-set-loop-start (-> % .-target .-value)
+                                               defaulted-loop-end-ms])
                      :on-commit #(rf/dispatch [:practaid.events/reset-looper])
                      :disabled  (not is-playback-ours)}]
             [waveform {:loudnesses      loudnesses
                        :loop-start-frac defaulted-loop-start-frac
                        :loop-end-frac   defaulted-loop-end-frac
-                       :player-pos-frac player-pos-frac}]
+                       :player-pos-frac player-pos-frac
+                       :handle-click (fn [e]
+                                       (let [rect (-> e .-target .getBoundingClientRect)
+                                             rect-width (- (.-right rect) (.-left rect))
+                                             click-x (- (.-clientX e)
+                                                        (.-left rect))
+                                             x-frac (/ click-x rect-width)]
+                                         (rf/dispatch [:practaid.events/seek-player x-frac])))}]
             [slider {:min       0
                      :max       track-duration-ms
                      :value     defaulted-loop-end-ms
-                     :on-change #(rf/dispatch [:practaid.events/attempt-change-loop-end (-> % .-target .-value)
-                                                                                        defaulted-loop-start-ms])
+                     :on-change #(rf/dispatch [:practaid.events/attempt-set-loop-end (-> % .-target .-value)
+                                               defaulted-loop-start-ms])
                      :on-commit #(rf/dispatch [:practaid.events/reset-looper])
-                     :disabled  (not is-playback-ours)}]])]]))
-            ;[:input {:type "number"
-            ;         :style {:max-width "40px"
-            ;                 :left (str (* 100 defaulted-loop-end-frac) "%")
-            ;                 :position "absolute"
-            ;                 :translate "14px"}
-            ;         :value defaulted-loop-end-ms
-            ;         :on-change #(do
-            ;                       (rf/dispatch [:practaid.events/attempt-change-loop-end (-> % .-target .-value)
-            ;                                      defaulted-loop-start-ms])
-            ;                       (rf/dispatch [:practaid.events/reset-looper]))}]])]]))
-
+                     :disabled  (not is-playback-ours)}]
+            ;; TODO dumber
+            (and loop-start-ms
+                 loop-end-ms
+                 [:div.unset-loop
+                  [:div.button-wrapper
+                   [:button {:on-click #(rf/dispatch [:practaid.events/unset-loop])}
+                    "Unset loop"]]])])]]))

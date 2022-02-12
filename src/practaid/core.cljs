@@ -4,6 +4,7 @@
    [re-frame.core :as re-frame]
    [practaid.events :as events]
    [practaid.views.app :as view-root]
+   [practaid.views.global-styles]
    [practaid.config :as config]
    [practaid.routes :as routes]
    [practaid.subs]))
