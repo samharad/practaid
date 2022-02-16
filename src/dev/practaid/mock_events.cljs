@@ -6,7 +6,7 @@
 ;; TODO can this ns be loaded based on a dev flag... separate mock build...?
 
 (def mock-item {:id "mock-item-id"
-                :album {:images [{:url "/mock/image/album-cover.jpg"}]
+                :album {:images [{:url "/mock/image/todo.jpg"}]
                         :name "Mock Album"}
                 :artists [{:name "Mock Artist"} {:name "Another Mock Artist"}]
                 :name "Mock Track"
