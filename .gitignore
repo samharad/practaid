@@ -2,10 +2,6 @@
 /out/
 /target/
 /resources/public/js/compiled/
-!/resources/public/js/compiled
-/resources/public/js/compiled/*
-!/resources/public/js/compiled/app.js
-!/resources/public/js/compiled/manifest.edn
 /*-init.clj
 /*.log
 

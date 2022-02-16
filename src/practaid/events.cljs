@@ -432,7 +432,7 @@
 
 (rf/reg-fx
   ::instantiate-and-initialize-player
-  (fn [{:keys [spotify-sdk]}]
+  (fn [{:keys [^js spotify-sdk]}]
     (let [player (new (.-Player spotify-sdk)
                       (clj->js {:name "PractAid"
                                 :getOAuthToken (fn [callback]

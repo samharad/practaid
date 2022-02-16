@@ -28,22 +28,19 @@
   {:target     :browser
    :output-dir "resources/public/js/compiled"
    :asset-path "/js/compiled"
-   :modules
-   {:app {:init-fn practaid.core/init}}
-   :devtools
-   {:preloads [day8.re-frame-10x.preload]}
-   :dev
-   {:compiler-options
-    {:optimizations :none
-     :closure-defines {goog.DEBUG true
-                       re-frame.trace.trace-enabled?        true
-                       day8.re-frame.tracing.trace-enabled? true}}}}
-  :browser-test
-  {:target    :browser-test
-   :ns-regexp "-test$"
-   :runner-ns shadow.test.browser
-   :test-dir  "target/browser-test"}
-  :karma-test
-  {:target    :karma
-   :ns-regexp "-test$"
-   :output-to "target/karma-test.js"}}}
+   :modules {:app {:init-fn practaid.core/init}}
+   :devtools {:preloads [day8.re-frame-10x.preload]}
+   :compiler-options {:infer-externs :auto}
+
+   :dev {:compiler-options
+         {:optimizations :none
+          :closure-defines {goog.DEBUG true
+                            re-frame.trace.trace-enabled?        true
+                            day8.re-frame.tracing.trace-enabled? true}}}}
+  :browser-test {:target    :browser-test
+                 :ns-regexp "-test$"
+                 :runner-ns shadow.test.browser
+                 :test-dir  "target/browser-test"}
+  :karma-test {:target    :karma
+               :ns-regexp "-test$"
+               :output-to "target/karma-test.js"}}}
