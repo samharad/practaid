@@ -3,7 +3,7 @@
             [cljs.core.async :refer [go <!]]
             [cljs.core.async.interop :refer-macros [<p!]]))
 
-(def client-id "a5c66773fd68433c950480d6a852d1a1")
+(def client-id "5c6be04474984ab2a2a492967aa87002")
 
 (defn random-bytes [n]
   (-> js/crypto
