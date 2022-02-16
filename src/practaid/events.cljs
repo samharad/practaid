@@ -225,8 +225,9 @@
 
 (rf/reg-event-fx
   ::prepare-for-oauth
-  (fn [_ _]
-    {::create-initial-auth-data nil}))
+  [(rf/inject-cofx ::location-origin)]
+  (fn [{:keys [location-origin]} _]
+    {::create-initial-auth-data location-origin}))
 
 (rf/reg-event-fx
   ::initiate-oauth
@@ -237,11 +238,20 @@
       {:store auth-data
        ::assign-url url})))
 
+(rf/reg-cofx
+  ::location-origin
+  (fn [cofx]
+    (assoc cofx
+      :location-origin
+      (-> js/location
+          .-origin))))
+
 (rf/reg-event-fx
   ::oauth-callback
-  [inject-store
+  [(rf/inject-cofx ::location-origin)
+   inject-store
    check-db-spec-interceptor]
-  (fn [{:keys [db store]} _]
+  (fn [{:keys [db store location-origin]} _]
     (let [code (-> db :current-route :query-params :code)
           code-verifier (-> store :code-verifier)]
       {:http-xhrio {:method :post
@@ -250,7 +260,7 @@
                     :body (js/URLSearchParams. (clj->js {"client_id" auth/client-id
                                                          "grant_type" "authorization_code"
                                                          "code" code
-                                                         "redirect_uri" "http://localhost:8080/callback"
+                                                         "redirect_uri" (str location-origin "/callback")
                                                          "code_verifier" code-verifier}))
                     :on-success [::confirm-complete-auth-flow]
                     :on-failure [::http-request-failure]}})))
@@ -268,9 +278,9 @@
 
 (rf/reg-fx
   ::create-initial-auth-data
-  (fn [_]
+  (fn [location-origin]
     (go
-      (let [{:keys [code-verifier nonce url]} (<! (auth/go-initial-auth-flow))]
+      (let [{:keys [code-verifier nonce url]} (<! (auth/go-initial-auth-flow location-origin))]
         (rf/dispatch [::initiate-oauth {:code-verifier code-verifier
                                         :nonce            nonce
                                         :url              url}])))))
@@ -366,7 +376,6 @@
           track (db/playback-track db)
           track-id (or (:id track)
                        (get-in external-playback-state [:item :id]))]
-      (println track-id)
       (when track-id
         {:fx [[:http-xhrio {:method :get
                             :uri (str "https://api.spotify.com/v1/audio-analysis/" track-id)

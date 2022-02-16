@@ -27,7 +27,7 @@
       (-> (js/Uint8Array. hash-buffer)
           (base64url)))))
 
-(defn go-initial-auth-flow []
+(defn go-initial-auth-flow [location-origin]
   (go
     (let [code-verifier (base64url (random-bytes 96))
           nonce (base64url (random-bytes 96))
@@ -36,7 +36,7 @@
                    (js/URLSearchParams. (clj->js {"response_type" "code"
                                                   "client_id" client-id
                                                   "scope" "streaming user-read-recently-played user-read-private user-read-email user-read-playback-state user-modify-playback-state user-read-currently-playing app-remote-control"
-                                                  "redirect_uri" "http://localhost:8080/callback"
+                                                  "redirect_uri" (str location-origin "/callback")
                                                   "state" nonce
                                                   "code_challenge_method" "S256"
                                                   "code_challenge" code-challenge})))]
