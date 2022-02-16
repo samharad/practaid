@@ -1,8 +1,9 @@
 (ns practaid.views.looper-page
   (:require [practaid.views.common :refer [page-wrapper loading-ellipses]]
-            [spade.core :refer [defclass]]
+            [spade.core :refer [defclass defkeyframes]]
             [re-frame.core :as rf]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [practaid.events :refer [playback-pos-refresh-interval-ms]]))
 
 (defclass playback-metadata-style []
   {:display "flex"
@@ -12,6 +13,7 @@
   [:div {:flex "1 1 0"}]
   [:.album-cover-container {:max-height "100%"
                             :max-width "300px"}]
+                            ;:min-width "100px"}]
   [:.album-cover-image {:max-width "100%"
                         :max-height "100%"}]
   [:.text-metadata-container {:align-self "center"
@@ -19,16 +21,21 @@
                               :max-width "400px"}
    [:.track-name {:font-size "40px"
                   :font-weight "bolder"}]
+   [:img.spotify-logo {:max-width "200px"}]
    [:artist-names {}]])
 
-(defn playback-metadata [{:keys [album-cover-url album-name artist-names track-name]}]
+(defn playback-metadata [{:keys [album-cover-url album-name artist-names track-name track-id]}]
   [:div {:class (playback-metadata-style)}
    (and album-cover-url
         [:div.album-cover-container
          [:img.album-cover-image {:src album-cover-url}]])
    [:div.text-metadata-container
+    [:a {:href (str "https://open.spotify.com/track/" track-id)
+         :title "Play on Spotify"}
+     [:img.spotify-logo {:src "/image/Spotify_Logo_RGB_Green.png"}]]
     [:div.track-name track-name]
-    [:div.artist-names (str/join ", " artist-names)]]])
+    [:div.artist-names (str/join ", " artist-names)]
+    [:div.album-nam album-name]]])
 
 
 
@@ -58,8 +65,6 @@
    :position "absolute"
    :width "3px"
    :pointer-events "none"
-   ;:color "black"
-   ;:background-color "black"
    :height "100%"})
 
 (defn waveform-pos-marker [{:keys [location color]}]
@@ -67,6 +72,16 @@
          :style {:left (str (* location 100) "%")
                  :background-color color}}])
 
+(defn playback-pos-marker [{:keys [location should-smooth-motion]}]
+  [:div {:class (waveform-pos-marker-style)
+         :style {:left (str (* location 100) "%")
+                 ;; TODO: I should be conditional on:
+                 ;;  - not being paused
+                 ;;  - not being in a seeking state
+                 ;;  - not resetting between tracks
+                 :transition (when should-smooth-motion
+                               (str "left " playback-pos-refresh-interval-ms "ms " "linear"))
+                 :background-color "green"}}])
 
 
 
@@ -90,12 +105,19 @@
    :width "1px"
    :pointer-events "none"})
 
-(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac handle-click]}]
+
+
+
+;(defkeyframes)
+
+
+(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac handle-click should-smooth-motion]}]
   [:div {:class (waveform-style)
          :on-click handle-click}
    [waveform-pos-marker {:location loop-start-frac :color "black"}]
    [waveform-pos-marker {:location loop-end-frac :color "black"}]
-   [waveform-pos-marker {:location player-pos-frac :color "green"}]
+   [playback-pos-marker {:location player-pos-frac
+                         :should-smooth-motion should-smooth-motion}]
    (for [[i loudness] (map-indexed vector loudnesses)]
      [:div.wave {:key i
                  :class (wave-style)
@@ -122,6 +144,9 @@
             :on-change on-change
             :on-mouse-up on-commit
             :disabled disabled}]])
+
+
+
 
 
 
@@ -155,7 +180,8 @@
         defaulted-loop-end-ms @(rf/subscribe [:practaid.subs/defaulted-loop-end-ms])
         defaulted-loop-start-frac @(rf/subscribe [:practaid.subs/defaulted-loop-start-frac])
         defaulted-loop-end-frac @(rf/subscribe [:practaid.subs/defaulted-loop-end-frac])
-        player-pos-frac @(rf/subscribe [:practaid.subs/player-pos-frac])]
+        player-pos-frac @(rf/subscribe [:practaid.subs/player-pos-frac])
+        should-smooth-motion @(rf/subscribe [:practaid.subs/should-smooth-motion])]
     [page-wrapper
      [:div {:class (looper-page-style)}
       [:div.connection-status
@@ -188,6 +214,7 @@
                        :loop-start-frac defaulted-loop-start-frac
                        :loop-end-frac   defaulted-loop-end-frac
                        :player-pos-frac player-pos-frac
+                       :should-smooth-motion should-smooth-motion
                        :handle-click (fn [e]
                                        (let [rect (-> e .-target .getBoundingClientRect)
                                              rect-width (- (.-right rect) (.-left rect))

@@ -62,6 +62,16 @@
   (fn [db]
     (:is-authorized db)))
 
+(rf/reg-sub
+  ::is-seeking
+  (fn [db]
+    (:is-seeking db)))
+
+(rf/reg-sub
+  ::is-paused
+  (fn [db]
+    (q/is-paused db)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tier 2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -105,6 +115,17 @@
   :<- [::defaulted-loop-end-ms]
   (fn [[duration end] _]
     (/ end duration)))
+
+;; For smoothing the cursor motion.
+;; Proved difficult to get this right; deactivating for now.
+(rf/reg-sub
+  ::should-smooth-motion
+  :<- [::is-seeking]
+  :<- [::player-pos-ms]
+  :<- [::is-paused]
+  (fn [[is-seeking pos is-paused] _]
+    false
+    #_(not (or is-paused is-seeking (zero? pos)))))
 
 (rf/reg-sub
   ::player-pos-frac
@@ -164,7 +185,8 @@
       {:album-cover-url (get-in item [:album :images 0 :url])
        :album-name (get-in item [:album :name])
        :artist-names (map :name (:artists item))
-       :track-name (:name item)})))
+       :track-name (:name item)
+       :track-id (:id item)})))
 
 (rf/reg-sub
   ::is-playback-ours

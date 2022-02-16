@@ -20,6 +20,9 @@
                               (+ (* 1000 expires-in-seconds))))))
 
 
+;; TODO move me
+(def playback-pos-refresh-interval-ms 200)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Interceptors
@@ -363,6 +366,7 @@
           track (db/playback-track db)
           track-id (or (:id track)
                        (get-in external-playback-state [:item :id]))]
+      (println track-id)
       (when track-id
         {:fx [[:http-xhrio {:method :get
                             :uri (str "https://api.spotify.com/v1/audio-analysis/" track-id)
@@ -409,7 +413,7 @@
 
 (rf/reg-fx
   ::initialize-spotify-sdk
-  (fn []
+  (fn [_]
     (let [script (.createElement js/document "script")
           _ (set! (.-src script) "https://sdk.scdn.co/spotify-player.js")
           _ (set! (.-async script) true)
@@ -481,13 +485,13 @@
           db (assoc db :playback-state state
                        :player-pos-ms player-pos-ms)
           is-paused (db/is-paused db)
-          interval-ms 200
-          set-pos-interval (when (or (nil? prev-paused)
-                                     (and prev-paused (not is-paused)))
-                             [::set-interval {:f #(rf/dispatch [::increment-player-pos-ms interval-ms])
-                                              :interval-ms interval-ms
-                                              :on-set [::set-player-pos-query-interval-id]}])
+          set-pos-interval (when (and (or prev-paused (nil? prev-paused))
+                                      (not is-paused))
+                             [::set-interval {:f           #(rf/dispatch [::increment-player-pos-ms playback-pos-refresh-interval-ms])
+                                              :interval-ms playback-pos-refresh-interval-ms
+                                              :on-set      [::set-player-pos-query-interval-id]}])
           clear-pos-interval (when (and (not prev-paused) is-paused player-pos-query-interval-id)
+                               (println "Clearing interval")
                                [::clear-interval player-pos-query-interval-id])
           db (if clear-pos-interval
                (assoc db :player-pos-query-interval-id nil)
@@ -498,11 +502,10 @@
                (assoc db :loop-timeout-id nil)
                db)
           set-loop-timeout (when (and prev-paused (not is-paused) loop-start-ms loop-end-ms)
-                             [::set-timeout {:f #(rf/dispatch [::reset-looper])
+                             [::set-timeout {:f          #(rf/dispatch [::reset-looper])
                                              :timeout-ms (- loop-end-ms player-pos-ms)
-                                             :on-set [::set-loop-timeout-id]}])]
+                                             :on-set     [::set-loop-timeout-id]}])]
       {:db db
-       ;; TODO I should be conditional on the track ID changing!
        :fx [(when is-different-track [:dispatch [::refresh-track-analysis]])
             clear-pos-interval
             set-pos-interval
@@ -555,7 +558,7 @@
   (fn [_ _]
     {:fx [
           ;[:dispatch [::navigate :routes/looper]]
-          [::initialize-spotify-sdk]
+          [::initialize-spotify-sdk nil]
           ;; TODO: store the outcome ID
           [::set-interval {:f #(rf/dispatch [::refresh-playback-state])
                            :interval-ms 5000}]
@@ -603,8 +606,7 @@
                            [::clear-timeout loop-timeout-id])
           seek-player (when (or seek-to-ms (and player loop-start-ms loop-end-ms))
                         [::player {:player player
-                                   :action #(.then (.seek ^SpotifyWebApi % (or seek-to-ms loop-start-ms))
-                                                   (println "Seeked!"))
+                                   :action [:seek (or seek-to-ms loop-start-ms)]
                                    :on-failure #(js/console.error %)}])
           set-timeout (when (and player loop-start-ms loop-end-ms (not is-paused))
                         [::set-timeout {:f #(rf/dispatch [::reset-looper])
@@ -628,14 +630,11 @@
     (let [{:keys [player]} db
           is-paused (db/is-paused db)
           is-paused' (not is-paused)
-          action (if is-paused'
-                   (fn [^SpotifyWebApi player] (.pause player))
-                   (fn [^SpotifyWebApi player] (.resume player)))
-
+          action (if is-paused' [:pause] [:resume])
           update-player [::player {:player player
                                    :action action
                                    :on-failure #(js/console.error "Failed to toggle!")}]]
-      {:db (-> db)
+      {:db db
        :fx [update-player]})))
 
 (rf/reg-event-fx
@@ -644,7 +643,7 @@
   (fn [{:keys [db]} _]
     (let [player (:player db)]
       {::player {:player player
-                 :action (fn [^SpotifyWebApi player] (.nextTrack player))
+                 :action [:next-track]
                  :on-success #(println "Next track!")
                  :on-failure #(js/console.error "Failed to next-track!")}})))
 
@@ -654,7 +653,7 @@
   (fn [{:keys [db]} _]
     (let [player (:player db)]
       {::player {:player player
-                 :action (fn [^SpotifyWebApi player] (.previousTrack player))
+                 :action [:previous-track]
                  :on-success #(println "Prev track!")
                  :on-failure #(js/console.error "Failed to prev-track!")}})))
 
@@ -700,16 +699,31 @@
       (assoc db :loop-end-ms (min track-duration-ms (max (+ (or loop-end-ms track-duration-ms) amt)
                                                          floor))))))
 
+(rf/reg-event-db
+  ::set-is-seeking
+  [check-db-spec-interceptor]
+  (fn [db [_ b]]
+    (assoc db :is-seeking b)))
+
 (rf/reg-fx
   ::player
   (fn [{:keys [player action on-success on-failure]}]
-    (let [handler (fn [f-or-v-or-nil]
+    (let [[action-type & args] action
+          action (action-type {:resume #(.resume player)
+                               :pause #(.pause player)
+                               :seek #(do
+                                        (rf/dispatch [::set-is-seeking true])
+                                        (.then (.seek player (first args))
+                                               (rf/dispatch [::set-is-seeking false])))
+                               :next-track #(.nextTrack player)
+                               :previous-track #(.previousTrack player)})
+          handler (fn [f-or-v-or-nil]
                     (cond
                       (vector? f-or-v-or-nil) #(rf/dispatch (conj f-or-v-or-nil %))
                       (fn? f-or-v-or-nil) f-or-v-or-nil
                       :else (constantly nil)))
           on-success (handler on-success)
           on-failure (handler on-failure)]
-      (-> (action player)
+      (-> (action)
           (.then on-success)
           (.catch on-failure)))))

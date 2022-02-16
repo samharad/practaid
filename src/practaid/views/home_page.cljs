@@ -3,14 +3,25 @@
             [spade.core :refer [defclass]]
             [re-frame.core :as rf]))
 
+(def spotify-green "#1DB954")
+
 (defclass home-page-style []
   {}
   [:.explanation {:text-align "center"}]
   [:.button-container {:display "flex"
                        :justify-content "center"
                        :align-items "center"}]
+  [:.spotify {:color spotify-green
+              :font-weight "bold"}]
   [:.login-button {:margin "auto"
-                   :text-align "center"}])
+                   :text-align "center"
+                   :background-color spotify-green
+                   :color "white"
+                   :font-size "20px"
+                   :cursor "pointer"
+                   :border "none"
+                   :padding "10px 15px"
+                   :border-radius "10px"}])
 
 (defn handle-login-click []
   (rf/dispatch [:practaid.events/prepare-for-oauth]))
@@ -19,10 +30,14 @@
   [page-wrapper
    [:div.home-page {:class (home-page-style)}
     [:div.explanation
-     [:p "Welcome to PractAid, a music practice tool integrated with your favorite streaming service."]
+     [:p "Welcome to PractAid, a music practice tool integrated with "
+      [:span.spotify "Spotify"]
+      "."]
      [:p "You'll need to log in with Spotify to use this tool."]
-     [:p "We don't read, store, or use any of your data."]
+     [:p
+      [:b "We don't read, collect, store, or use any of your data."]]
      [:p "Happy practicing!"]]
     [:div.button-container
-     [:button.login-button {:on-click handle-login-click}
-      "Login with Spotify"]]]])
+     [:button.login-button {:type "button"
+                            :on-click handle-login-click}
+      "Log In to Spotify"]]]])

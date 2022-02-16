@@ -48,21 +48,24 @@
 
 (s/def ::device-id (s/nilable string?))
 (s/def ::is-taking-over-playback boolean?)
+;; TODO
 (s/def ::external-playback-state any?)
 
 (s/def ::player any?)
 (s/def ::playback-state (s/nilable :spot/playback-state))
 
-
+;; TODO
 (s/def ::track-analysis any?)
 
 (s/def ::player-pos-query-interval-id (s/nilable any?))
 
+(s/def ::is-seeking boolean?)
 (s/def ::player-pos-ms (s/nilable integer?))
 (s/def ::loop-start-ms (s/nilable integer?))
 (s/def ::loop-end-ms(s/nilable integer?))
 (s/def ::loop-timeout-id (s/nilable any?))
 
+;; TODO
 (s/def ::recently-played any?)
 
 (s/def :re-pressed.core/keydown (s/nilable any?))
@@ -87,6 +90,7 @@
 
                                   ::player-pos-query-interval-id
 
+                                  ::is-seeking
                                   ::player-pos-ms
                                   ::loop-start-ms
                                   ::loop-end-ms
@@ -137,6 +141,7 @@
    :device-id nil
 
    ;; Looping & playback ----------------------------------
+   :is-seeking false
    :player-pos-ms nil
    :loop-start-ms nil
    :loop-end-ms nil
