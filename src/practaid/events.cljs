@@ -438,6 +438,9 @@
                                 :getOAuthToken (fn [callback]
                                                  (rf/dispatch [::player-requests-access-token callback]))
                                 :volume 0.5}))
+          _ (.addListener player "autoplay_failed"
+                          ;; TODO move me
+                          (fn [] (js/console.error "Autoplay is not allowed by the browser autoplay rules.")))
 
           _ (.addListener player "ready"
                           (fn [player]
