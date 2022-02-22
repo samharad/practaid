@@ -71,7 +71,9 @@
 (s/def :re-pressed.core/keydown (s/nilable any?))
 (s/def :re-pressed.core/keyup (s/nilable any?))
 
-(s/def ::db-keys (s/keys :req-un [,
+(s/def ::db-keys (s/keys :req [:re-pressed.core/keyup
+                               :re-pressed.core/keydown]
+                         :req-un [,
                                   ::nonce
                                   ::code-verifier
                                   ::is-authorized
@@ -97,23 +99,9 @@
                                   ::loop-timeout-id
 
                                   ::recently-played
-
-                                  :re-pressed.core/keydown
-                                  :re-pressed.core/keyup
                                   ,]))
 
-;; TODO
-(s/def ::db any? #_(s/and
-                     ::db-keys
-                     (fn [m]
-                       (let [m-keys (set (map #(keyword "practaid.db" %) (keys m)))
-                             expected (set (.-req_un (s/get-spec ::db-keys)))
-                             diff (set/difference m-keys expected)]
-                         (if (not-empty diff)
-                           (do
-                             (js/console.error (clj->js diff))
-                             false)
-                           true)))))
+(s/def ::db ::db-keys)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

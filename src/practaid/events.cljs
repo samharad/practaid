@@ -33,6 +33,9 @@
   ;; TODO: make the console error more legible
   [a-spec x]
   (when-not (s/valid? a-spec x)
+    (cljs.pprint/pprint (->> (s/explain-data a-spec x)
+                             :cljs.spec.alpha/problems
+                             (map #(dissoc % :val))))
     (throw (ex-info (str "spec check failed: " (s/explain-str a-spec x)) {}))))
 
 (def check-db-spec-interceptor (rf/after (partial check-and-throw :practaid.db/db)))
