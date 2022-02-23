@@ -48,4 +48,5 @@
       [:b [:span.beta-note "Note:"] " this app is in beta and only accessible to allow-listed users."]]
      [:p "To request access, send an email including your Spotify username/email to "
       [:a {:href "mailto: support@practaid.com?subject=Request for Access to PractAid&body=My Spotify username is {PUT YOUR USERNAME HERE}"}
-       "support@practaid.com"]]]]])
+       "support@practaid.com"]
+      "."]]]])
