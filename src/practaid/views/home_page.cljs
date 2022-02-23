@@ -21,7 +21,9 @@
                    :cursor "pointer"
                    :border "none"
                    :padding "10px 15px"
-                   :border-radius "10px"}])
+                   :border-radius "10px"}]
+  [:.beta {:text-align "center"}]
+  [:.beta-note {:color "red"}])
 
 (defn handle-login-click []
   (rf/dispatch [:practaid.events/prepare-for-oauth]))
@@ -40,4 +42,10 @@
     [:div.button-container
      [:button.login-button {:type "button"
                             :on-click handle-login-click}
-      "Log In to Spotify"]]]])
+      "Log In to Spotify"]]
+    [:div.beta
+     [:p
+      [:b [:span.beta-note "Note:"] " this app is in beta and only accessible to allow-listed users."]]
+     [:p "To request access, send an email including your Spotify username/email to "
+      [:a {:href "mailto: support@practaid.com?subject=Request for Access to PractAid&body=My Spotify username is {PUT YOUR USERNAME HERE}"}
+       "support@practaid.com"]]]]])
