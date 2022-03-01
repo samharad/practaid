@@ -144,9 +144,9 @@
                (assoc db :loop-timeout-id nil)
                db)
           set-loop-timeout (when (and prev-paused (not is-paused) loop-start-ms loop-end-ms)
-                             [::set-timeout {:f          #(rf/dispatch [:practaid.events/reset-looper])
-                                             :timeout-ms (- loop-end-ms player-pos-ms)
-                                             :on-set     [:practaid.events/set-loop-timeout-id]}])]
+                             [:practaid.events/set-timeout {:f          #(rf/dispatch [:practaid.events/reset-looper])
+                                                            :timeout-ms (- loop-end-ms player-pos-ms)
+                                                            :on-set     [:practaid.events/set-loop-timeout-id]}])]
       {:db db
        :fx [(when is-different-track [:dispatch [:practaid.events/refresh-track-analysis]])
             clear-pos-interval

@@ -59,7 +59,7 @@
       (mocker existing))))
 
 (mock-fx
-  :practaid.events/assign-url
+  :practaid.routes/assign-url
   (fn [real-handler]
     (fn [url]
       (println "Mock Handler!")

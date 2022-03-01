@@ -15,6 +15,7 @@ users loop (or 'A-B loop') segments of Spotify songs.
 - [ ] Add placeholders for album cover, waveform etc. pre-login
 - [ ] Add help text for hotkeys
 - [ ] More elegant way for starting a mocked-out offline dev build
+- [ ] Finish pulling apart `practaid.events` ns
 
 ## Mocking FX (Offline mode)
 

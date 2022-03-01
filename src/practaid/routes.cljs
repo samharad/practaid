@@ -6,7 +6,8 @@
             [reitit.frontend.controllers :as rfc]
             [practaid.views.home-page :refer [home-page]]
             [practaid.views.callback-page :refer [callback-page]]
-            [practaid.views.looper-page :refer [looper-page]]))
+            [practaid.views.looper-page :refer [looper-page]]
+            [practaid.events :refer [check-db-spec-interceptor]]))
 
 ;;; Routes
 
@@ -34,10 +35,46 @@
 
 (defn on-navigate [new-match]
   (when new-match
-    (rf/dispatch [:practaid.events/navigated new-match])))
+    (rf/dispatch [::navigated new-match])))
 
 (defn init-routes! []
   (rfe/start!
     router
     on-navigate
     {:use-fragment false}))
+
+
+;; Routing -----------------------------------------------
+
+(rf/reg-event-fx
+  ::navigate
+  [check-db-spec-interceptor]
+  (fn [_cofx [_ route]]
+    {::navigate! route}))
+
+(rf/reg-event-db
+  ::navigated
+  [check-db-spec-interceptor]
+  (fn [db [_ new-match]]
+    (let [old-match   (:current-route db)
+          controllers (rfc/apply-controllers (:controllers old-match) new-match)]
+      (assoc db :current-route (assoc new-match :controllers controllers)))))
+
+(rf/reg-fx
+  ::navigate!
+  (fn [route]
+    (rfe/push-state route)))
+
+;; For foreign-domain routes; TODO maybe move me?
+(rf/reg-fx
+  ::assign-url
+  (fn [url]
+    (-> js/window
+        (.-location)
+        (.assign url))))
+
+(rf/reg-fx
+  ::reload-page
+  (fn [_]
+    (.reload js/location)))
+

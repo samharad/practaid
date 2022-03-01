@@ -7,6 +7,7 @@
    ;; TODO -- only importing for event registration
    [practaid.auth]
    [practaid.player]
+   [practaid.hotkeys]
 
    [practaid.views.app :as view-root]
    [practaid.views.global-styles]

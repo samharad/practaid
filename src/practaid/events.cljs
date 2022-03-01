@@ -8,8 +8,7 @@
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [cljs.core.async :refer [go <!]]
-    [cljs.core.async.interop :refer-macros [<p!]]
-    [re-pressed.core :as rp])
+    [cljs.core.async.interop :refer-macros [<p!]])
   (:require ["spotify-web-api-js" :as SpotifyWebApi]
             [cljs.spec.alpha :as s]))
 
@@ -95,17 +94,6 @@
 
 ;; Initialization ----------------------------------------
 
-(def space-key-code 32)
-(def p-key-code 80)
-(def enter-key-code 13)
-(def mac-enter-key-code 3)
-(def left-key-code 37)
-(def right-key-code 39)
-(def up-key-code 38)
-(def down-key-code 40)
-
-(def keypress-looper-step-ms 10)
-
 (rf/reg-event-fx
   ::initialize-app
   [inject-store
@@ -121,51 +109,8 @@
           init-looper-page (when is-authorized
                              [:dispatch [::initialize-looper-page]])]
       {:db db
-       :fx [[:dispatch [::rp/add-keyboard-event-listener "keydown"]]
-            [:dispatch [::rp/add-keyboard-event-listener "keyup"]]
-            init-looper-page
-            [:dispatch [::rp/set-keyup-rules {:event-keys [[[::reset-looper nil]
-                                                            [{:keyCode left-key-code}]
-                                                            [{:keyCode right-key-code}]
-                                                            [{:keyCode up-key-code}]
-                                                            [{:keyCode down-key-code}]]]
-                                              :always-listen-keys [{:keyCode left-key-code}
-                                                                   {:keyCode right-key-code}
-                                                                   {:keyCode up-key-code}
-                                                                   {:keyCode down-key-code}]}]]
-            [:dispatch [::rp/set-keydown-rules {:event-keys [[[::toggle-play]
-                                                              [{:keyCode space-key-code}]
-                                                              [{:keyCode p-key-code}]]
-
-                                                             [[::reset-looper nil]
-                                                              [{:keyCode enter-key-code}]
-                                                              [{:keyCode mac-enter-key-code}]]
-
-                                                             [[::attempt-increment-loop-start (- keypress-looper-step-ms)]
-                                                              [{:keyCode left-key-code}]]
-                                                             [[::attempt-increment-loop-start keypress-looper-step-ms]
-                                                              [{:keyCode right-key-code}]]
-                                                             [[::attempt-increment-loop-end (- keypress-looper-step-ms)]
-                                                              [{:keyCode down-key-code}]]
-                                                             [[::attempt-increment-loop-end keypress-looper-step-ms]
-                                                              [{:keyCode up-key-code}]]
-                                                             ,]
-                                                :always-listen-keys [{:keyCode space-key-code}
-                                                                     {:keyCode p-key-code}
-                                                                     {:keyCode enter-key-code}
-                                                                     {:keyCode mac-enter-key-code}
-                                                                     {:keyCode left-key-code}
-                                                                     {:keyCode right-key-code}
-                                                                     {:keyCode up-key-code}
-                                                                     {:keyCode down-key-code}]
-                                                :prevent-default-keys [{:keyCode space-key-code}
-                                                                       {:keyCode p-key-code}
-                                                                       {:keyCode enter-key-code}
-                                                                       {:keyCode mac-enter-key-code}
-                                                                       {:keyCode left-key-code}
-                                                                       {:keyCode right-key-code}
-                                                                       {:keyCode up-key-code}
-                                                                       {:keyCode down-key-code}]}]]]})))
+       :fx [init-looper-page
+            [:dispatch [:practaid.hotkeys/register-hotkeys]]]})))
 
 (rf/reg-event-fx
   ::reset-app-completely
@@ -174,43 +119,8 @@
    check-store-spec-interceptor]
   (fn [_ _]
     {:fx [[:store {}]
-          [::reload-page nil]]}))
+          [:practaid.routes/reload-page nil]]}))
 
-
-
-;; Routing -----------------------------------------------
-
-(rf/reg-event-fx
-  ::navigate
-  [check-db-spec-interceptor]
-  (fn [_cofx [_ route]]
-    {::navigate! route}))
-
-(rf/reg-event-db
-  ::navigated
-  [check-db-spec-interceptor]
-  (fn [db [_ new-match]]
-    (let [old-match   (:current-route db)
-          controllers (rfc/apply-controllers (:controllers old-match) new-match)]
-      (assoc db :current-route (assoc new-match :controllers controllers)))))
-
-(rf/reg-fx
-  ::navigate!
-  (fn [route]
-    (rfe/push-state route)))
-
-;; For foreign-domain routes
-(rf/reg-fx
-  ::assign-url
-  (fn [url]
-    (-> js/window
-        (.-location)
-        (.assign url))))
-
-(rf/reg-fx
-  ::reload-page
-  (fn [_]
-    (.reload js/location)))
 
 
 
@@ -344,7 +254,6 @@
   [check-db-spec-interceptor]
   (fn [_ _]
     {:fx [
-          ;[:dispatch [::navigate :routes/looper]]
           [:practaid.player/initialize-spotify-sdk nil]
           ;; TODO: store the outcome ID
           [::set-interval {:f #(rf/dispatch [::refresh-playback-state])
