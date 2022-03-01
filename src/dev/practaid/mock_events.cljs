@@ -6,18 +6,35 @@
 ;; TODO can this ns be loaded based on a dev flag... separate mock build...?
 
 (def mock-item {:id "mock-item-id"
-                :album {:images [{:url "/mock/image/todo.jpg"}]
+                :album {:images [{:url "/mock/image/mock-cover.jpg"}]
                         :name "Mock Album"}
                 :artists [{:name "Mock Artist"} {:name "Another Mock Artist"}]
                 :name "Mock Track"
                 :duration_ms 60000})
 
-;; TODO at this point does it make as much sense to
-;; create a JavaScript class to wrap this?
-(def mock-player-state (atom {:position 20000
-                              :track_window {:current_track mock-item}
-                              :paused true
-                              :last-play-time (js/Date.)}))
+(defonce mock-player-state
+  (let [state (atom {:position 0
+                     :track_window {:current_track mock-item}
+                     :paused false
+                     :last-play-time (js/Date.)})
+
+        update-state-interval-ms 200
+        update-state (fn [state]
+                       (-> state
+                           (update :position (if (:paused state)
+                                               identity
+                                               (partial + update-state-interval-ms)))))
+        update-state-interval-id (js/setInterval
+                                   #(swap! state update-state)
+                                   update-state-interval-ms)
+
+        emit-state-interval-ms 3000
+        emit-state-interval-id (js/setInterval
+                                 #(rf/dispatch [:practaid.events/player-state-changed
+                                                (clj->js @state)]))]
+
+    state))
+
 
 (defn mock-cofx [id mocker]
   (let [existing (-> @reg/kind->id->handler
@@ -95,13 +112,13 @@
           :pause (rf/dispatch [:practaid.events/player-state-changed
                                (swap! mock-player-state
                                       #(-> %
-                                           (assoc :paused true)
-                                           (assoc :position (- (js/Date.) (:last-play-time %)))))])
+                                           (assoc :paused true)))])
+                                           ;(assoc :position (- (js/Date.) (:last-play-time %)))))])
           :resume (rf/dispatch [:practaid.events/player-state-changed
                                 (swap! mock-player-state
                                        #(-> %
-                                            (assoc :paused false)
-                                            (assoc :last-play-time (js/Date.))))])
+                                            (assoc :paused false)))])
+                                            ;(assoc :last-play-time (js/Date.))))])
           :seek (rf/dispatch [:practaid.events/player-state-changed
                               (swap! mock-player-state
                                      #(assoc % :position (first args)))])
