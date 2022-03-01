@@ -3,8 +3,6 @@
             [re-frame.registrar :as reg]
             [clojure.string :as str]))
 
-;; TODO can this ns be loaded based on a dev flag... separate mock build...?
-
 (def mock-item {:id "mock-item-id"
                 :album {:images [{:url "/mock/image/mock-cover.jpg"}]
                         :name "Mock Album"}
@@ -15,8 +13,7 @@
 (defonce mock-player-state
   (let [state (atom {:position 0
                      :track_window {:current_track mock-item}
-                     :paused false
-                     :last-play-time (js/Date.)})
+                     :paused false})
 
         update-state-interval-ms 200
         update-state (fn [state]
@@ -31,7 +28,8 @@
         emit-state-interval-ms 3000
         emit-state-interval-id (js/setInterval
                                  #(rf/dispatch [:practaid.events/player-state-changed
-                                                (clj->js @state)]))]
+                                                (clj->js @state)])
+                                 emit-state-interval-ms)]
 
     state))
 
@@ -97,9 +95,11 @@
           (and (= method :get)
                (str/starts-with? uri "https://api.spotify.com/v1/audio-analysis"))
           (rf/dispatch [:practaid.events/confirm-track-analysis
-                        {:segments [{:duration 20000
-                                     :start 0
-                                     :loudness_max 0}]}])
+                        {:segments (->> (range 20)
+                                        (map #(identity {:duration 1000
+                                                         :start (* % 1000)
+                                                         :loudness_max (- (rand-int 30)
+                                                                          30)})))}])
 
           :else (real-handler req))))))
 

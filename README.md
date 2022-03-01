@@ -14,6 +14,7 @@ users loop (or 'A-B loop') segments of Spotify songs.
       The intro/description could be a modal.
 - [ ] Add placeholders for album cover, waveform etc. pre-login
 - [ ] Add help text for hotkeys
+- [ ] More elegant way for starting a mocked-out offline dev build
 
 ## Mocking FX (Offline mode)
 
