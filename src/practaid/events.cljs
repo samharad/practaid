@@ -442,7 +442,6 @@
                                                  (rf/dispatch [::player-requests-access-token callback]))
                                 :volume 0.5}))
           _ (.addListener player "autoplay_failed"
-                          ;; TODO move me
                           (fn [] (js/console.error "Autoplay is not allowed by the browser autoplay rules.")))
 
           _ (.addListener player "ready"
@@ -564,7 +563,7 @@
     (let [item (db/playback-track db)
           track-duration-ms (:duration_ms item)]
       (if track-duration-ms
-        {:fx [[:dispatch [::reset-looper (* track-duration-ms pos-frac)]]]}
+        {:fx [[:dispatch [::reset-looper (int (* track-duration-ms pos-frac))]]]}
         {}))))
 
 (rf/reg-event-fx
