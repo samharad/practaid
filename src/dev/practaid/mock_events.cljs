@@ -27,7 +27,7 @@
 
         emit-state-interval-ms 3000
         emit-state-interval-id (js/setInterval
-                                 #(rf/dispatch [:practaid.events/player-state-changed
+                                 #(rf/dispatch [:practaid.player/player-state-changed
                                                 (clj->js @state)])
                                  emit-state-interval-ms)]
 
@@ -44,7 +44,7 @@
       (mocker existing))))
 
 (mock-cofx
-  :practaid.events/spotify-sdk-object
+  :practaid.player/spotify-sdk-object
   (fn [real-injector]
     (fn [cofx]
       (assoc cofx :spotify-sdk nil))))
@@ -69,11 +69,11 @@
         (real-handler url)))))
 
 (mock-fx
-  :practaid.events/initialize-spotify-sdk
+  :practaid.player/initialize-spotify-sdk
   (fn [real-handler]
     (fn [_]
-      (rf/dispatch [:practaid.events/player-instantiated {}])
-      (rf/dispatch [:practaid.events/player-ready {:device_id "mock-device-id"}]))))
+      (rf/dispatch [:practaid.player/player-instantiated {}])
+      (rf/dispatch [:practaid.player/player-ready {:device_id "mock-device-id"}]))))
 
 (mock-fx
   :http-xhrio
@@ -104,26 +104,26 @@
           :else (real-handler req))))))
 
 (mock-fx
-  :practaid.events/player
+  :practaid.player/player
   (fn [real-handler]
     (fn [{:keys [action]}]
       (let [[action-type & args] action]
         (case action-type
-          :pause (rf/dispatch [:practaid.events/player-state-changed
+          :pause (rf/dispatch [:practaid.player/player-state-changed
                                (swap! mock-player-state
                                       #(-> %
                                            (assoc :paused true)))])
                                            ;(assoc :position (- (js/Date.) (:last-play-time %)))))])
-          :resume (rf/dispatch [:practaid.events/player-state-changed
+          :resume (rf/dispatch [:practaid.player/player-state-changed
                                 (swap! mock-player-state
                                        #(-> %
                                             (assoc :paused false)))])
                                             ;(assoc :last-play-time (js/Date.))))])
-          :seek (rf/dispatch [:practaid.events/player-state-changed
+          :seek (rf/dispatch [:practaid.player/player-state-changed
                               (swap! mock-player-state
                                      #(assoc % :position (first args)))])
           ;; Same for next and prev
-          (rf/dispatch [:practaid.events/player-state-changed
+          (rf/dispatch [:practaid.player/player-state-changed
                         (swap! mock-player-state
                                #(-> %
                                     (assoc :position 0)
@@ -133,7 +133,7 @@
                                                 :name (str "Mock Track " (rand-int 1000))))))]))))))
 
 (comment
-  (rf/dispatch [:practaid.events/player-state-changed
+  (rf/dispatch [:practaid.player/player-state-changed
                 (clj->js @mock-player-state)]))
 
 

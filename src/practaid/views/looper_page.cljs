@@ -3,7 +3,7 @@
             [spade.core :refer [defclass defkeyframes]]
             [re-frame.core :as rf]
             [clojure.string :as str]
-            [practaid.events :refer [playback-pos-refresh-interval-ms]]))
+            [practaid.player :refer [playback-pos-refresh-interval-ms]]))
 
 (defclass playback-metadata-style []
   {:display "flex"

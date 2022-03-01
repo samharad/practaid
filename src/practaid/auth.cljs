@@ -62,8 +62,9 @@
     (let [auth-data {:nonce nonce
                      :code-verifier code-verifier}]
       {:store auth-data
-       ::assign-url url})))
+       :practaid.events/assign-url url})))
 
+;; TODO move me to generic location?
 (rf/reg-cofx
   ::location-origin
   (fn [cofx]
@@ -83,13 +84,18 @@
       {:http-xhrio {:method          :post
                     :uri             "https://accounts.spotify.com/api/token"
                     :response-format (ajax/json-response-format {:keywords? true})
-                    :body            (js/URLSearchParams. (clj->js {"client_id"     auth/client-id
+                    :body            (js/URLSearchParams. (clj->js {"client_id"     client-id
                                                                     "grant_type"    "authorization_code"
                                                                     "code"          code
                                                                     "redirect_uri"  (str location-origin "/callback")
                                                                     "code_verifier" code-verifier}))
                     :on-success      [::confirm-complete-auth-flow]
                     :on-failure      [:practaid.events/http-request-failure]}})))
+
+(defn expires-at [now-date expires-in-seconds]
+  (.toISOString (js/Date. (-> now-date
+                              .getTime
+                              (+ (* 1000 expires-in-seconds))))))
 
 (rf/reg-event-fx
   ::confirm-complete-auth-flow
@@ -99,14 +105,14 @@
     {:db (assoc db :is-authorized true)
      :fx [[:store (assoc store :access-token access_token
                                :expires-at (expires-at (js/Date.) expires_in))]
-          [:dispatch [::initialize-looper-page]]
-          [:dispatch [::navigate :routes/home]]]}))
+          [:dispatch [:practaid.events/initialize-looper-page]]
+          [:dispatch [:practaid.events/navigate :routes/home]]]}))
 
 (rf/reg-fx
   ::create-initial-auth-data
   (fn [location-origin]
     (go
-      (let [{:keys [code-verifier nonce url]} (<! (auth/go-initial-auth-flow location-origin))]
+      (let [{:keys [code-verifier nonce url]} (<! (go-initial-auth-flow location-origin))]
         (rf/dispatch [::initiate-oauth {:code-verifier code-verifier
                                         :nonce         nonce
                                         :url           url}])))))
