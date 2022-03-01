@@ -26,7 +26,7 @@
   [:.beta-note {:color "red"}])
 
 (defn handle-login-click []
-  (rf/dispatch [:practaid.events/prepare-for-oauth]))
+  (rf/dispatch [:practaid.auth/prepare-for-oauth]))
 
 (defn home-page []
   [page-wrapper

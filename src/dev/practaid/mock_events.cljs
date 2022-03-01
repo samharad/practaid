@@ -64,8 +64,8 @@
     (fn [url]
       (println "Mock Handler!")
       (if (str/starts-with? url "https://accounts.spotify.com/authorize")
-        (rf/dispatch [:practaid.events/confirm-complete-auth-flow {:access_token "mock-token"
-                                                                   :expires_in "3600"}])
+        (rf/dispatch [:practaid.auth/confirm-complete-auth-flow {:access_token "mock-token"
+                                                                 :expires_in "3600"}])
         (real-handler url)))))
 
 (mock-fx

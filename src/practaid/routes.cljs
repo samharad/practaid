@@ -22,7 +22,7 @@
      :link-text "Callback"
      :controllers
      [{:start (fn []
-                (rf/dispatch [:practaid.events/oauth-callback]))}]}]
+                (rf/dispatch [:practaid.auth/oauth-callback]))}]}]
    ["looper"
     {:name :routes/looper
      :view looper-page}]])

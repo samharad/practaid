@@ -3,6 +3,8 @@
    [reagent.dom :as rdom]
    [re-frame.core :as re-frame]
    [practaid.events :as events]
+   ;; TODO -- only importing for event registration
+   [practaid.auth]
    [practaid.views.app :as view-root]
    [practaid.views.global-styles]
    [practaid.config :as config]

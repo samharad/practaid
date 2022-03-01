@@ -5,7 +5,6 @@
     [day8.re-frame.http-fx]
     [akiroz.re-frame.storage :refer [reg-co-fx!]]
     [ajax.core :as ajax]
-    [practaid.auth :as auth]
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [cljs.core.async :refer [go <!]]
@@ -223,70 +222,6 @@
     (.reload js/location)))
 
 
-
-;; Auth ---------------------------------------------------
-
-(rf/reg-event-fx
-  ::prepare-for-oauth
-  [(rf/inject-cofx ::location-origin)]
-  (fn [{:keys [location-origin]} _]
-    {::create-initial-auth-data location-origin}))
-
-(rf/reg-event-fx
-  ::initiate-oauth
-  [check-db-spec-interceptor]
-  (fn [_ [_ {:keys [code-verifier nonce url]}]]
-    (let [auth-data {:nonce nonce
-                     :code-verifier code-verifier}]
-      {:store auth-data
-       ::assign-url url})))
-
-(rf/reg-cofx
-  ::location-origin
-  (fn [cofx]
-    (assoc cofx
-      :location-origin
-      (-> js/location
-          .-origin))))
-
-(rf/reg-event-fx
-  ::oauth-callback
-  [(rf/inject-cofx ::location-origin)
-   inject-store
-   check-db-spec-interceptor]
-  (fn [{:keys [db store location-origin]} _]
-    (let [code (-> db :current-route :query-params :code)
-          code-verifier (-> store :code-verifier)]
-      {:http-xhrio {:method :post
-                    :uri "https://accounts.spotify.com/api/token"
-                    :response-format (ajax/json-response-format {:keywords? true})
-                    :body (js/URLSearchParams. (clj->js {"client_id" auth/client-id
-                                                         "grant_type" "authorization_code"
-                                                         "code" code
-                                                         "redirect_uri" (str location-origin "/callback")
-                                                         "code_verifier" code-verifier}))
-                    :on-success [::confirm-complete-auth-flow]
-                    :on-failure [::http-request-failure]}})))
-
-(rf/reg-event-fx
-  ::confirm-complete-auth-flow
-  [(rf/inject-cofx :store)
-   check-db-spec-interceptor]
-  (fn [{:keys [db store]} [_ {:keys [access_token expires_in refresh_token token_type scope]}]]
-    {:db (assoc db :is-authorized true)
-     :fx [[:store (assoc store :access-token access_token
-                               :expires-at (expires-at (js/Date.) expires_in))]
-          [:dispatch [::initialize-looper-page]]
-          [:dispatch [::navigate :routes/home]]]}))
-
-(rf/reg-fx
-  ::create-initial-auth-data
-  (fn [location-origin]
-    (go
-      (let [{:keys [code-verifier nonce url]} (<! (auth/go-initial-auth-flow location-origin))]
-        (rf/dispatch [::initiate-oauth {:code-verifier code-verifier
-                                        :nonce            nonce
-                                        :url              url}])))))
 
 
 
