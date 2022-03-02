@@ -49,7 +49,7 @@
           is-expired (boolean (or (not expires-at)
                                   (< (js/Date. expires-at) (js/Date.))))
           fx (if is-expired
-               [[:dispatch [::reset-app-completely]]]
+               [[:dispatch [:practaid.events/reset-app-completely]]]
                [[::exec-player-callback {:callback callback
                                          :access-token access-token}]])]
       {:fx fx})))

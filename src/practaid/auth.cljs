@@ -4,7 +4,7 @@
             [cljs.core.async.interop :refer-macros [<p!]]
             [re-frame.core :as rf]
             [ajax.core :as ajax]
-            [practaid.events :refer [inject-store check-db-spec-interceptor]]))
+            [practaid.events :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]))
 
 (def client-id "5c6be04474984ab2a2a492967aa87002")
 
@@ -107,6 +107,15 @@
                                :expires-at (expires-at (js/Date.) expires_in))]
           [:dispatch [:practaid.events/initialize-looper-page]]
           [:dispatch [:practaid.routes/navigate :routes/home]]]}))
+
+(rf/reg-event-fx
+  ::logout
+  [(rf/inject-cofx :store)
+   check-db-spec-interceptor
+   check-store-spec-interceptor]
+  (fn [_ _]
+    {:fx [[:store {}]
+          [:practaid.routes/reload-page]]}))
 
 (rf/reg-fx
   ::create-initial-auth-data

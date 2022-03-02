@@ -1,19 +1,27 @@
 (ns practaid.views.common
   (:require [spade.core :refer [defclass defkeyframes]]
-            [garden.selectors :as gs]))
+            [garden.selectors :as gs]
+            [re-frame.core :as rf]))
 
 (defclass page-wrapper-style []
   {}
-  [:.title {:text-align "center"}]
+  [:.title {:text-align "center"
+            :margin-bottom "8px"}]
   [:.title-link {:text-decoration "none"
-                 :color "black"}])
+                 :color "black"}]
+  [:.logout {:text-align "center"}])
+             ;:padding "0"
+             ;:margin "auto"}])
+             ;:display "inline"}])
 
 (defn page-wrapper [children]
-  [:div {:class (page-wrapper-style)}
-   [:a.title-link {:href "/"}
-    [:h1.title "PractAid"]]
-   [:hr]
-   children])
+  (let [is-authorized @(rf/subscribe [:practaid.subs/is-authorized])]
+    [:div {:class (page-wrapper-style)}
+     [:a.title-link {:href "/"}
+      [:h1.title "PractAid"]]
+     (and is-authorized [:div.logout [:button {:on-click #(rf/dispatch [:practaid.auth/logout])} "Log Out"]])
+     [:hr]
+     children]))
 
 
 
