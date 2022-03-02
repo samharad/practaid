@@ -16,6 +16,7 @@ users loop (or 'A-B loop') segments of Spotify songs.
 - [ ] Add help text for hotkeys
 - [ ] More elegant way for starting a mocked-out offline dev build
 - [ ] Finish pulling apart `practaid.events` ns
+- [ ] Pull apart DB
 
 ## Mocking FX (Offline mode)
 

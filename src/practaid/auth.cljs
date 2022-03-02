@@ -53,7 +53,7 @@
   ::prepare-for-oauth
   [(rf/inject-cofx ::location-origin)]
   (fn [{:keys [location-origin]} _]
-    {::create-initial-auth-data location-origin}))
+    {:fx [[::create-initial-auth-data location-origin]]}))
 
 (rf/reg-event-fx
   ::initiate-oauth
@@ -62,7 +62,7 @@
     (let [auth-data {:nonce nonce
                      :code-verifier code-verifier}]
       {:store auth-data
-       :practaid.events/assign-url url})))
+       :practaid.routes/assign-url url})))
 
 ;; TODO move me to generic location?
 (rf/reg-cofx
@@ -106,7 +106,7 @@
      :fx [[:store (assoc store :access-token access_token
                                :expires-at (expires-at (js/Date.) expires_in))]
           [:dispatch [:practaid.events/initialize-looper-page]]
-          [:dispatch [:practaid.events/navigate :routes/home]]]}))
+          [:dispatch [:practaid.routes/navigate :routes/home]]]}))
 
 (rf/reg-fx
   ::create-initial-auth-data
