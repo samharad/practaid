@@ -6,7 +6,8 @@
 users loop (or 'A-B loop') segments of Spotify songs.
 
 ## TODO
-- [ ] Add link back to source
+- [x] Add link back to source
+- [x] Add logout button
 - [ ] Expound on functionality, permissions required
 - [ ] Mention supported browsers
 - [ ] Add support for Safari
