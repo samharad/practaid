@@ -8,7 +8,10 @@
 		"ci": "npx shadow-cljs compile karma-test && npx karma start --single-run --reporters junit,dots"
 	},
 	"dependencies": {
+		"colorthief": "^2.3.2",
 		"highlight.js": "10.7.1",
+		"multiple.js": "0.0.1",
+		"node-vibrant": "^3.2.1-alpha.1",
 		"react": "17.0.2",
 		"react-dom": "17.0.2",
 		"spotify-web-api-js": "^1.5.2"

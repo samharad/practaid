@@ -57,6 +57,9 @@
 ;; TODO
 (s/def ::track-analysis any?)
 
+(s/def ::album-colors (s/nilable (s/coll-of
+                                   (s/coll-of integer?))))
+
 (s/def ::player-pos-query-interval-id (s/nilable any?))
 
 (s/def ::is-seeking boolean?)
@@ -123,6 +126,7 @@
    :external-playback-state nil
    :track-analysis nil
    :recently-played nil
+   :album-colors nil
 
    ;; Player ----------------------------------------------
    :player nil

@@ -8,9 +8,9 @@
     [reitit.frontend.easy :as rfe]
     [reitit.frontend.controllers :as rfc]
     [cljs.core.async :refer [go <!]]
-    [cljs.core.async.interop :refer-macros [<p!]])
-  (:require ["spotify-web-api-js" :as SpotifyWebApi]
-            [cljs.spec.alpha :as s]))
+    [cljs.core.async.interop :refer-macros [<p!]]
+    [cljs.spec.alpha :as s]
+    ["colorthief/dist/color-thief.mjs" :default ColorThief]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -238,6 +238,15 @@
 
 
 ;; Looper page---------------------------------------------
+
+(rf/reg-event-fx
+  ::album-cover-img-loaded
+  [check-db-spec-interceptor]
+  (fn [{:keys [db]} [_ img-element]]
+    (let [palette (-> (new ColorThief)
+                      (. getPalette img-element 2)
+                      (js->clj))]
+      {:db (assoc db :album-colors palette)})))
 
 (rf/reg-event-fx
   ::seek-player

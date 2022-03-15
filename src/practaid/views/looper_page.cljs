@@ -3,7 +3,8 @@
             [spade.core :refer [defclass defkeyframes]]
             [re-frame.core :as rf]
             [clojure.string :as str]
-            [practaid.player :refer [playback-pos-refresh-interval-ms]]))
+            [practaid.player :refer [playback-pos-refresh-interval-ms]]
+            ["multiple.js" :as Multiple]))
 
 (defclass playback-metadata-style []
   {:display "flex"
@@ -28,7 +29,11 @@
   [:div {:class (playback-metadata-style)}
    (and album-cover-url
         [:div.album-cover-container
-         [:img.album-cover-image {:src album-cover-url}]])
+         [:img.album-cover-image {:src album-cover-url
+                                  :crossOrigin "Anonymous"
+                                  :on-load #(rf/dispatch [:practaid.events/album-cover-img-loaded
+                                                          (-> js/document
+                                                              (. querySelector "img.album-cover-image"))])}]])
    [:div.text-metadata-container
     [:a {:href (str "https://open.spotify.com/track/" track-id)
          :title "Play on Spotify"}
@@ -111,18 +116,24 @@
 ;(defkeyframes)
 
 
-(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac handle-click should-smooth-motion]}]
-  [:div {:class (waveform-style)
-         :on-click handle-click}
-   [waveform-pos-marker {:location loop-start-frac :color "black"}]
-   [waveform-pos-marker {:location loop-end-frac :color "black"}]
-   [playback-pos-marker {:location player-pos-frac
-                         :should-smooth-motion should-smooth-motion}]
-   (for [[i loudness] (map-indexed vector loudnesses)]
-     [:div.wave {:key i
-                 :class (wave-style)
-                 ;; TODO move me?
-                 :style {:height (str (int (* loudness 100)) "%")}}])])
+(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac handle-click should-smooth-motion album-colors]}]
+  (let [rgbs (map #(str "rgb(" (str/join ", " %) ")")
+                  album-colors)
+        background (when rgbs (str "linear-gradient(to right," (str/join ", " rgbs)  ")"))
+        waveform-style (waveform-style)
+        _ (when rgbs (new ^js Multiple (clj->js {:selector "div.wave"
+                                                 :background background})))]
+    [:div {:class waveform-style
+           :on-click handle-click}
+     [waveform-pos-marker {:location loop-start-frac :color "black"}]
+     [waveform-pos-marker {:location loop-end-frac :color "black"}]
+     [playback-pos-marker {:location player-pos-frac
+                           :should-smooth-motion should-smooth-motion}]
+     (for [[i loudness] (map-indexed vector loudnesses)]
+       [:div.wave {:key i
+                   :class (wave-style)
+                   ;; TODO move me?
+                   :style {:height (str (int (* loudness 100)) "%")}}])]))
 
 
 
@@ -181,7 +192,8 @@
         defaulted-loop-start-frac @(rf/subscribe [:practaid.subs/defaulted-loop-start-frac])
         defaulted-loop-end-frac @(rf/subscribe [:practaid.subs/defaulted-loop-end-frac])
         player-pos-frac @(rf/subscribe [:practaid.subs/player-pos-frac])
-        should-smooth-motion @(rf/subscribe [:practaid.subs/should-smooth-motion])]
+        should-smooth-motion @(rf/subscribe [:practaid.subs/should-smooth-motion])
+        album-colors @(rf/subscribe [:practaid.subs/album-colors])]
     [page-wrapper
      [:div {:class (looper-page-style)}
       [:div.connection-status
@@ -210,7 +222,8 @@
                                                defaulted-loop-end-ms])
                      :on-commit #(rf/dispatch [:practaid.events/reset-looper])
                      :disabled  (not is-playback-ours)}]
-            [waveform {:loudnesses      loudnesses
+            [waveform {:album-colors album-colors
+                       :loudnesses      loudnesses
                        :loop-start-frac defaulted-loop-start-frac
                        :loop-end-frac   defaulted-loop-end-frac
                        :player-pos-frac player-pos-frac
