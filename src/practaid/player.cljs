@@ -158,6 +158,8 @@
 ;; TODO
 (rf/reg-fx
   ::player
+  ;; JS type annotation fixes issues (strangely) only with the next/prev buttons;
+  ;; resume, pause, seek work without this annotation (solely with the other one)
   (fn [{:keys [^js player action on-success on-failure]}]
     (let [[action-type & args] action
           action (action-type {:resume #(.resume player)
