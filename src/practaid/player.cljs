@@ -158,7 +158,7 @@
 ;; TODO
 (rf/reg-fx
   ::player
-  (fn [{:keys [player action on-success on-failure]}]
+  (fn [{:keys [^js player action on-success on-failure]}]
     (let [[action-type & args] action
           action (action-type {:resume #(.resume player)
                                :pause #(.pause player)
