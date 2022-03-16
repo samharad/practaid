@@ -7,7 +7,11 @@
             [practaid.views.home-page :refer [home-page]]
             [practaid.views.callback-page :refer [callback-page]]
             [practaid.views.looper-page :refer [looper-page]]
-            [practaid.events :refer [check-db-spec-interceptor]]))
+            [practaid.interceptors :refer [check-db-spec-interceptor]]
+            [cljs.spec.alpha :as s]))
+
+(s/def ::current-route (s/nilable any?))
+(s/def ::state (s/keys :req-un [::current-route]))
 
 ;;; Routes
 
@@ -56,9 +60,11 @@
   ::navigated
   [check-db-spec-interceptor]
   (fn [db [_ new-match]]
-    (let [old-match   (:current-route db)
+    (let [old-match   (:current-route (::state db))
           controllers (rfc/apply-controllers (:controllers old-match) new-match)]
-      (assoc db :current-route (assoc new-match :controllers controllers)))))
+      (assoc-in db
+                [::state :current-route]
+                (assoc new-match :controllers controllers)))))
 
 (rf/reg-fx
   ::navigate!

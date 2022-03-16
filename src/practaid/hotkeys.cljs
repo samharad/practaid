@@ -19,7 +19,7 @@
   (fn [_ _]
     {:fx [[:dispatch [::rp/add-keyboard-event-listener "keydown"]]
           [:dispatch [::rp/add-keyboard-event-listener "keyup"]]
-          [:dispatch [::rp/set-keyup-rules {:event-keys [[[:practaid.events/reset-looper nil]
+          [:dispatch [::rp/set-keyup-rules {:event-keys [[[:practaid.looper/reset-looper nil]
                                                           [{:keyCode left-key-code}]
                                                           [{:keyCode right-key-code}]
                                                           [{:keyCode up-key-code}]
@@ -28,21 +28,21 @@
                                                                  {:keyCode right-key-code}
                                                                  {:keyCode up-key-code}
                                                                  {:keyCode down-key-code}]}]]
-          [:dispatch [::rp/set-keydown-rules {:event-keys [[[:practaid.events/toggle-play]
+          [:dispatch [::rp/set-keydown-rules {:event-keys [[[:practaid.looper/toggle-play]
                                                             [{:keyCode space-key-code}]
                                                             [{:keyCode p-key-code}]]
 
-                                                           [[:practaid.events/reset-looper nil]
+                                                           [[:practaid.looper/reset-looper nil]
                                                             [{:keyCode enter-key-code}]
                                                             [{:keyCode mac-enter-key-code}]]
 
-                                                           [[:practaid.events/attempt-increment-loop-start (- keypress-looper-step-ms)]
+                                                           [[:practaid.looper/attempt-increment-loop-start (- keypress-looper-step-ms)]
                                                             [{:keyCode left-key-code}]]
-                                                           [[:practaid.events/attempt-increment-loop-start keypress-looper-step-ms]
+                                                           [[:practaid.looper/attempt-increment-loop-start keypress-looper-step-ms]
                                                             [{:keyCode right-key-code}]]
-                                                           [[:practaid.events/attempt-increment-loop-end (- keypress-looper-step-ms)]
+                                                           [[:practaid.looper/attempt-increment-loop-end (- keypress-looper-step-ms)]
                                                             [{:keyCode down-key-code}]]
-                                                           [[:practaid.events/attempt-increment-loop-end keypress-looper-step-ms]
+                                                           [[:practaid.looper/attempt-increment-loop-end keypress-looper-step-ms]
                                                             [{:keyCode up-key-code}]]
                                                            ,]
                                               :always-listen-keys [{:keyCode space-key-code}

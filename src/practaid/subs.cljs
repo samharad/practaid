@@ -1,7 +1,10 @@
 (ns practaid.subs
   (:require
     [re-frame.core :as rf]
-    [practaid.db :as q]))
+    [practaid.db :as q]
+    [practaid.player :as player]
+    [practaid.looper :as looper]
+    [practaid.routes :as routes]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tier 1
@@ -10,17 +13,17 @@
 (rf/reg-sub
   :current-route
   (fn [db]
-    (:current-route db)))
+    (get-in db [::routes/state :current-route])))
 
 (rf/reg-sub
   ::device-id
   (fn [db]
-    (:device-id db)))
+    (get-in db [::player/state :device-id])))
 
 (rf/reg-sub
   ::is-taking-over-playback
   (fn [db]
-    (:is-taking-over-playback db)))
+    (get-in db [::player/state :is-taking-over-playback])))
 
 (rf/reg-sub
   ::track
@@ -30,12 +33,12 @@
 (rf/reg-sub
   ::external-playback-state
   (fn [db]
-    (:external-playback-state db)))
+    (get-in db [::player/state :external-playback-state])))
 
 (rf/reg-sub
   ::recently-played
   (fn [db]
-    (:recently-played db)))
+    (get-in db [::player/state :recently-played])))
 
 (rf/reg-sub
   ::track-analysis
@@ -45,12 +48,12 @@
 (rf/reg-sub
   ::loop-start-ms
   (fn [db]
-    (:loop-start-ms db)))
+    (get-in db [::looper/state :loop-start-ms])))
 
 (rf/reg-sub
   ::loop-end-ms
   (fn [db]
-    (:loop-end-ms db)))
+    (get-in db [::looper/state :loop-end-ms])))
 
 (rf/reg-sub
   ::player-pos-ms
@@ -61,11 +64,6 @@
   ::is-authorized
   (fn [db]
     (:is-authorized db)))
-
-(rf/reg-sub
-  ::is-seeking
-  (fn [db]
-    (:is-seeking db)))
 
 (rf/reg-sub
   ::is-paused
@@ -80,7 +78,7 @@
 (rf/reg-sub
   ::player
   (fn [db]
-    (:player db)))
+    (get-in db [::player/state :player])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tier 2
@@ -125,17 +123,6 @@
   :<- [::defaulted-loop-end-ms]
   (fn [[duration end] _]
     (/ end duration)))
-
-;; For smoothing the cursor motion.
-;; Proved difficult to get this right; deactivating for now.
-(rf/reg-sub
-  ::should-smooth-motion
-  :<- [::is-seeking]
-  :<- [::player-pos-ms]
-  :<- [::is-paused]
-  (fn [[is-seeking pos is-paused] _]
-    false
-    #_(not (or is-paused is-seeking (zero? pos)))))
 
 (rf/reg-sub
   ::player-pos-frac
@@ -201,7 +188,8 @@
 (rf/reg-sub
   ::is-playback-ours
   (fn [db]
-    (let [{:keys [device-id external-playback-state]} db]
+    (let [{player-state ::player/state} db
+          {:keys [device-id external-playback-state]} player-state]
       (and device-id
            external-playback-state
            (= device-id (get-in external-playback-state [:device :id]))))))

@@ -83,7 +83,7 @@
         (cond
           (and (= method :get)
                (str/starts-with? uri "https://api.spotify.com/v1/me/player"))
-          (rf/dispatch [:practaid.events/confirm-refresh-playback-state
+          (rf/dispatch [:practaid.player/confirm-refresh-playback-state
                         {:item mock-item
                          :device {:id "mock-device-id"}}])
 

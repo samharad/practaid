@@ -77,15 +77,9 @@
          :style {:left (str (* location 100) "%")
                  :background-color color}}])
 
-(defn playback-pos-marker [{:keys [location should-smooth-motion]}]
+(defn playback-pos-marker [{:keys [location]}]
   [:div {:class (waveform-pos-marker-style)
          :style {:left (str (* location 100) "%")
-                 ;; TODO: I should be conditional on:
-                 ;;  - not being paused
-                 ;;  - not being in a seeking state
-                 ;;  - not resetting between tracks
-                 :transition (when should-smooth-motion
-                               (str "left " playback-pos-refresh-interval-ms "ms " "linear"))
                  :background-color "green"}}])
 
 
@@ -113,10 +107,9 @@
 
 
 
-;(defkeyframes)
 
 
-(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac handle-click should-smooth-motion album-colors]}]
+(defn waveform [{:keys [loudnesses loop-start-frac loop-end-frac player-pos-frac handle-click album-colors]}]
   (let [rgbs (map #(str "rgb(" (str/join ", " %) ")")
                   album-colors)
         background (when rgbs (str "linear-gradient(to right," (str/join ", " rgbs)  ")"))
@@ -127,8 +120,7 @@
            :on-click handle-click}
      [waveform-pos-marker {:location loop-start-frac :color "black"}]
      [waveform-pos-marker {:location loop-end-frac :color "black"}]
-     [playback-pos-marker {:location player-pos-frac
-                           :should-smooth-motion should-smooth-motion}]
+     [playback-pos-marker {:location player-pos-frac}]
      (for [[i loudness] (map-indexed vector loudnesses)]
        [:div.wave {:key i
                    :class (wave-style)
@@ -192,7 +184,6 @@
         defaulted-loop-start-frac @(rf/subscribe [:practaid.subs/defaulted-loop-start-frac])
         defaulted-loop-end-frac @(rf/subscribe [:practaid.subs/defaulted-loop-end-frac])
         player-pos-frac @(rf/subscribe [:practaid.subs/player-pos-frac])
-        should-smooth-motion @(rf/subscribe [:practaid.subs/should-smooth-motion])
         album-colors @(rf/subscribe [:practaid.subs/album-colors])
         ^js player @(rf/subscribe [:practaid.subs/player])]
     [page-wrapper
@@ -212,48 +203,47 @@
                                      ;; within this click handler; see:
                                      ;; https://developer.spotify.com/documentation/web-playback-sdk/reference/#api-spotify-player-activateelement
                                      (.activateElement player)
-                                     (rf/dispatch [:practaid.events/takeover-playback]))}
+                                     (rf/dispatch [:practaid.player/takeover-playback]))}
                "Take over playback" (and is-taking-over-playback [loading-ellipses])]]])]
       (and playback-md
            [playback-metadata playback-md])
       (and track
            [playback-controls {:disabled (not is-playback-ours)
-                               :on-toggle-play #(rf/dispatch [:practaid.events/toggle-play])
-                               :on-next #(rf/dispatch [:practaid.events/next-track])
-                               :on-prev #(rf/dispatch [:practaid.events/prev-track])}])
+                               :on-toggle-play #(rf/dispatch [:practaid.looper/toggle-play])
+                               :on-next #(rf/dispatch [:practaid.looper/next-track])
+                               :on-prev #(rf/dispatch [:practaid.looper/prev-track])}])
       (and loudnesses
            [:div.field
             [slider {:min       0
                      :max       track-duration-ms
                      :value     defaulted-loop-start-ms
-                     :on-change #(rf/dispatch [:practaid.events/attempt-set-loop-start (-> % .-target .-value)
+                     :on-change #(rf/dispatch [:practaid.looper/attempt-set-loop-start (-> % .-target .-value)
                                                defaulted-loop-end-ms])
-                     :on-commit #(rf/dispatch [:practaid.events/reset-looper])
+                     :on-commit #(rf/dispatch [:practaid.looper/reset-looper])
                      :disabled  (not is-playback-ours)}]
             [waveform {:album-colors album-colors
                        :loudnesses      loudnesses
                        :loop-start-frac defaulted-loop-start-frac
                        :loop-end-frac   defaulted-loop-end-frac
                        :player-pos-frac player-pos-frac
-                       :should-smooth-motion should-smooth-motion
                        :handle-click (fn [e]
                                        (let [rect (-> e .-target .getBoundingClientRect)
                                              rect-width (- (.-right rect) (.-left rect))
                                              click-x (- (.-clientX e)
                                                         (.-left rect))
                                              x-frac (/ click-x rect-width)]
-                                         (rf/dispatch [:practaid.events/seek-player x-frac])))}]
+                                         (rf/dispatch [:practaid.looper/seek-player x-frac])))}]
             [slider {:min       0
                      :max       track-duration-ms
                      :value     defaulted-loop-end-ms
-                     :on-change #(rf/dispatch [:practaid.events/attempt-set-loop-end (-> % .-target .-value)
+                     :on-change #(rf/dispatch [:practaid.looper/attempt-set-loop-end (-> % .-target .-value)
                                                defaulted-loop-start-ms])
-                     :on-commit #(rf/dispatch [:practaid.events/reset-looper])
+                     :on-commit #(rf/dispatch [:practaid.looper/reset-looper])
                      :disabled  (not is-playback-ours)}]
             ;; TODO dumber
             (and loop-start-ms
                  loop-end-ms
                  [:div.unset-loop
                   [:div.button-wrapper
-                   [:button {:on-click #(rf/dispatch [:practaid.events/unset-loop])}
+                   [:button {:on-click #(rf/dispatch [:practaid.looper/unset-loop])}
                     "Unset loop"]]])])]]))

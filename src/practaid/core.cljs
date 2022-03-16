@@ -2,9 +2,11 @@
   (:require
    [reagent.dom :as rdom]
    [re-frame.core :as re-frame]
+   [practaid.spot]
    [practaid.events :as events]
 
    ;; TODO -- only importing for event registration
+   [practaid.looper]
    [practaid.auth]
    [practaid.player]
    [practaid.hotkeys]

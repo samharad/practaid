@@ -4,7 +4,7 @@
             [cljs.core.async.interop :refer-macros [<p!]]
             [re-frame.core :as rf]
             [ajax.core :as ajax]
-            [practaid.events :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]))
+            [practaid.interceptors :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]))
 
 (def client-id "5c6be04474984ab2a2a492967aa87002")
 
@@ -79,7 +79,7 @@
    inject-store
    check-db-spec-interceptor]
   (fn [{:keys [db store location-origin]} _]
-    (let [code (-> db :current-route :query-params :code)
+    (let [code (-> db :practaid.routes/state :current-route :query-params :code)
           code-verifier (-> store :code-verifier)]
       {:http-xhrio {:method          :post
                     :uri             "https://accounts.spotify.com/api/token"
@@ -90,7 +90,7 @@
                                                                     "redirect_uri"  (str location-origin "/callback")
                                                                     "code_verifier" code-verifier}))
                     :on-success      [::confirm-complete-auth-flow]
-                    :on-failure      [:practaid.events/http-request-failure]}})))
+                    :on-failure      [:practaid.interceptors/http-request-failure]}})))
 
 (defn expires-at [now-date expires-in-seconds]
   (.toISOString (js/Date. (-> now-date
