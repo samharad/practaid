@@ -179,16 +179,16 @@
           access-token (:access-token store)]
       (when (and player device-id access-token)
         {:db (assoc db :is-taking-over-playback true)
-         :http-xhrio {:method :put
-                      :uri "https://api.spotify.com/v1/me/player"
-                      :headers {"Authorization" (str "Bearer " access-token)
-                                "Content-Type" "application/json"}
-                      :body (.stringify js/JSON (clj->js {:device_ids [device-id]
-                                                          :play true}))
-                      :response-format (ajax/json-response-format {:keywords? true})
-                      ;; TODO
-                      :on-success [::confirm-takeover-playback]
-                      :on-failure [::deny-takeover-playback]}}))))
+         :fx [[:http-xhrio {:method :put
+                            :uri "https://api.spotify.com/v1/me/player"
+                            :headers {"Authorization" (str "Bearer " access-token)
+                                      "Content-Type" "application/json"}
+                            :body (.stringify js/JSON (clj->js {:device_ids [device-id]
+                                                                :play true}))
+                            :response-format (ajax/json-response-format {:keywords? true})
+                            ;; TODO
+                            :on-success [::confirm-takeover-playback]
+                            :on-failure [::deny-takeover-playback]}]]}))))
 
 (rf/reg-event-fx
   ::confirm-takeover-playback
