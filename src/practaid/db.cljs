@@ -7,6 +7,8 @@
 (s/def :re-pressed.core/keydown (s/nilable any?))
 (s/def :re-pressed.core/keyup (s/nilable any?))
 
+;; TODO: add `:is-authorized`
+
 (s/def ::db-keys (s/keys :req [:re-pressed.core/keyup
                                :re-pressed.core/keydown
 
@@ -22,9 +24,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn default-db []
-  {,
-   :re-pressed.core/keydown nil
+  {:re-pressed.core/keydown nil
    :re-pressed.core/keyup nil
+
+   :practaid.routes/state {:current-route nil}
 
    :practaid.player/state {:player nil
                            :device-id nil
@@ -35,17 +38,13 @@
                            :is-taking-over-playback false
                            :recently-played nil}
 
-   :practaid.routes/state {:current-route nil}
-
    ;; All looper functionality built atop the player;
    ;; looping, play, pause, seek, waveform stuff
    :practaid.looper/state {:loop-start-ms nil
                            :loop-end-ms nil
                            :loop-timeout-id nil
                            :track-analysis nil
-                           :album-colors nil}
-
-                 ,})
+                           :album-colors nil}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Queries

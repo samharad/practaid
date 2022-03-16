@@ -1,4 +1,5 @@
 (ns practaid.subs
+  ;; TODO: deprecate me; mover each sub where it belongs
   (:require
     [re-frame.core :as rf]
     [practaid.db :as q]
