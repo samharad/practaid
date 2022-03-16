@@ -193,7 +193,8 @@
         defaulted-loop-end-frac @(rf/subscribe [:practaid.subs/defaulted-loop-end-frac])
         player-pos-frac @(rf/subscribe [:practaid.subs/player-pos-frac])
         should-smooth-motion @(rf/subscribe [:practaid.subs/should-smooth-motion])
-        album-colors @(rf/subscribe [:practaid.subs/album-colors])]
+        album-colors @(rf/subscribe [:practaid.subs/album-colors])
+        ^js player @(rf/subscribe [:practaid.subs/player])]
     [page-wrapper
      [:div {:class (looper-page-style)}
       [:div.connection-status
@@ -204,7 +205,14 @@
             [:div
              [:h3.connected "Connected"]
              [:div.button-wrapper
-              [:button {:on-click #(rf/dispatch [:practaid.events/takeover-playback])}
+              [:button {:on-click #(do
+                                     ;; NOTE: some browsers have autoplay restrictions which prevent audio playback
+                                     ;; except in response to a user action; so, in order to start playback upon
+                                     ;; taking over playback control, we need to call this function directly from
+                                     ;; within this click handler; see:
+                                     ;; https://developer.spotify.com/documentation/web-playback-sdk/reference/#api-spotify-player-activateelement
+                                     (.activateElement player)
+                                     (rf/dispatch [:practaid.events/takeover-playback]))}
                "Take over playback" (and is-taking-over-playback [loading-ellipses])]]])]
       (and playback-md
            [playback-metadata playback-md])
