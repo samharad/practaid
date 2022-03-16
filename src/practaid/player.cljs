@@ -4,7 +4,7 @@
   We should not be adding large functionalities here; we should just be integrating
   existing Spotify-API functionalities into our app."
   (:require [re-frame.core :as rf]
-            [practaid.interceptors :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]
+            [practaid.common :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]
             [cljs.spec.alpha :as s]
             [practaid.spot :as spot]
             [ajax.core :as ajax]))
@@ -74,7 +74,7 @@
           is-expired (boolean (or (not expires-at)
                                   (< (js/Date. expires-at) (js/Date.))))
           fx (if is-expired
-               [[:dispatch [:practaid.events/reset-app-completely]]]
+               [[:dispatch [:practaid.looper/reset-app-completely]]]
                [[::exec-player-callback {:callback callback
                                          :access-token access-token}]])]
       {:fx fx})))
@@ -158,12 +158,12 @@
           player-pos-ms (get-in state [:position])
           set-pos-interval (when (and (or prev-paused (nil? prev-paused))
                                       (not is-paused))
-                             [:practaid.interceptors/set-interval {:f           #(rf/dispatch [::increment-player-pos-ms playback-pos-refresh-interval-ms])
-                                                                   :interval-ms playback-pos-refresh-interval-ms
-                                                                   :on-set      [::set-player-pos-query-interval-id]}])
+                             [:practaid.common/set-interval {:f           #(rf/dispatch [::increment-player-pos-ms playback-pos-refresh-interval-ms])
+                                                             :interval-ms playback-pos-refresh-interval-ms
+                                                             :on-set      [::set-player-pos-query-interval-id]}])
           clear-pos-interval (when (and (not prev-paused) is-paused player-pos-query-interval-id)
                                (println "Clearing interval")
-                               [:practaid.interceptors/clear-interval player-pos-query-interval-id])
+                               [:practaid.common/clear-interval player-pos-query-interval-id])
           db (-> db
                  (assoc-in [::state :pos-ms] player-pos-ms)
                  (assoc-in [::state :playback-state] state))
@@ -215,7 +215,7 @@
                                         "Content-Type"  "application/json"}
                       :response-format (ajax/json-response-format {:keywords? true})
                       :on-success      [::confirm-refresh-playback-state]
-                      :on-failure      [:practaid.interceptors/http-request-failure]}}))))
+                      :on-failure      [:practaid.common/http-request-failure]}}))))
 
 (rf/reg-event-db
   ::confirm-refresh-playback-state
@@ -235,7 +235,7 @@
           access-token (:access-token store)
           {:keys [device-id player]} player-state]
       (when (and player device-id access-token)
-        {:db (assoc db :is-taking-over-playback true)
+        {:db (assoc-in db [::state :is-taking-over-playback] true)
          :fx [[:http-xhrio {:method :put
                             :uri "https://api.spotify.com/v1/me/player"
                             :headers {"Authorization" (str "Bearer " access-token)
@@ -274,7 +274,7 @@
                         :response-format (ajax/json-response-format {:keywords? true})
                         :url-params {"limit" "1"}
                         :on-success [::confirm-refresh-recently-played]
-                        :on-failure [:practaid.interceptors/http-request-failure]}]]}))
+                        :on-failure [:practaid.common/http-request-failure]}]]}))
 
 (rf/reg-event-db
   ::confirm-refresh-recently-played

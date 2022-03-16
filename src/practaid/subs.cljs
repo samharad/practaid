@@ -43,7 +43,7 @@
 (rf/reg-sub
   ::track-analysis
   (fn [db]
-    (:track-analysis db)))
+    (get-in db [::looper/state :track-analysis])))
 
 (rf/reg-sub
   ::loop-start-ms
@@ -73,7 +73,7 @@
 (rf/reg-sub
   ::album-colors
   (fn [db]
-    (:album-colors db)))
+    (get-in db [::looper/state :album-colors])))
 
 (rf/reg-sub
   ::player

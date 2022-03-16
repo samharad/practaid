@@ -4,7 +4,7 @@
             [cljs.core.async.interop :refer-macros [<p!]]
             [re-frame.core :as rf]
             [ajax.core :as ajax]
-            [practaid.interceptors :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]))
+            [practaid.common :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]))
 
 (def client-id "5c6be04474984ab2a2a492967aa87002")
 
@@ -90,7 +90,7 @@
                                                                     "redirect_uri"  (str location-origin "/callback")
                                                                     "code_verifier" code-verifier}))
                     :on-success      [::confirm-complete-auth-flow]
-                    :on-failure      [:practaid.interceptors/http-request-failure]}})))
+                    :on-failure      [:practaid.common/http-request-failure]}})))
 
 (defn expires-at [now-date expires-in-seconds]
   (.toISOString (js/Date. (-> now-date
@@ -105,7 +105,7 @@
     {:db (assoc db :is-authorized true)
      :fx [[:store (assoc store :access-token access_token
                                :expires-at (expires-at (js/Date.) expires_in))]
-          [:dispatch [:practaid.events/initialize-looper-page]]
+          [:dispatch [:practaid.looper/initialize-looper-page]]
           [:dispatch [:practaid.routes/navigate :routes/home]]]}))
 
 (rf/reg-event-fx

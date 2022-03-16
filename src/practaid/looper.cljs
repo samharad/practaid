@@ -1,17 +1,26 @@
 (ns practaid.looper
+  "Could nearly be called `core`; this is the more specific functionality
+  that constitutes this apps reason-d-atre (sp)."
   (:require [cljs.spec.alpha :as s]
             [re-frame.core :as rf]
             [practaid.db :as db]
             [practaid.player :as player]
-            [practaid.interceptors :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]))
+            [practaid.common :refer [inject-store check-db-spec-interceptor check-store-spec-interceptor]]
+            [ajax.core :as ajax]
+            ["colorthief/dist/color-thief.mjs" :default ColorThief]))
 
 (s/def ::loop-start-ms (s/nilable integer?))
 (s/def ::loop-end-ms(s/nilable integer?))
 (s/def ::loop-timeout-id (s/nilable any?))
+(s/def ::track-analysis (s/nilable any?))
+(s/def ::album-colors (s/nilable (s/coll-of
+                                   (s/coll-of integer?))))
 
 (s/def ::state (s/keys :req-un [::loop-start-ms
                                 ::loop-end-ms
-                                ::loop-timeout-id]))
+                                ::loop-timeout-id
+                                ::track-analysis
+                                ::album-colors]))
 
 (rf/reg-event-fx
   ::player-state-changed
@@ -37,13 +46,13 @@
       {:db db
        :fx [(when is-different-track [:dispatch [::clear-looper]])
             ;; TODO where does this one belong...
-            (when is-different-track [:dispatch [:practaid.events/refresh-track-analysis]])
+            (when is-different-track [:dispatch [::refresh-track-analysis]])
             (when clear-loop-timeout
-              [:practaid.interceptors/clear-timeout loop-timeout-id])
+              [:practaid.common/clear-timeout loop-timeout-id])
             (when set-loop-timeout
-              [:practaid.interceptors/set-timeout {:f          #(rf/dispatch [:practaid.looper/reset-looper])
-                                                   :timeout-ms (- loop-end-ms player-pos-ms)
-                                                   :on-set     [:practaid.looper/set-loop-timeout-id]}])]})))
+              [:practaid.common/set-timeout {:f          #(rf/dispatch [:practaid.looper/reset-looper])
+                                             :timeout-ms (- loop-end-ms player-pos-ms)
+                                             :on-set     [:practaid.looper/set-loop-timeout-id]}])]})))
 
 (rf/reg-event-fx
   ::seek-player
@@ -62,7 +71,7 @@
     (let [{looper-state ::state} db
           {:keys [loop-timeout-id]} looper-state
           clear-loop-timeout (when loop-timeout-id
-                               [:practaid.interceptors/clear-timeout loop-timeout-id])]
+                               [:practaid.common/clear-timeout loop-timeout-id])]
       {:db (-> db
                (assoc-in [::state :loop-start-ms] nil)
                (assoc-in [::state :loop-end-ms] nil)
@@ -77,7 +86,7 @@
           {looper-state ::state} db
           {:keys [loop-timeout-id]} looper-state
           clear-timeout (when loop-timeout-id
-                          [:practaid.interceptors/clear-timeout loop-timeout-id])]
+                          [:practaid.common/clear-timeout loop-timeout-id])]
       {:db (-> db
                (assoc-in [::state :loop-timeout-id] nil)
                (assoc-in [::state :loop-start-ms] nil)
@@ -95,16 +104,16 @@
           {:keys [player]} player-state
           is-paused (db/is-paused db)
           clear-existing (when loop-timeout-id
-                           [:practaid.interceptors/clear-timeout loop-timeout-id])
+                           [:practaid.common/clear-timeout loop-timeout-id])
           seek-player (when (or seek-to-ms (and player loop-start-ms loop-end-ms))
                         [::player/player {:player player
                                           :action [:seek (or seek-to-ms loop-start-ms)]
                                           :on-failure #(js/console.error %)}])
           set-timeout (when (and player loop-start-ms loop-end-ms (not is-paused))
-                        [:practaid.interceptors/set-timeout {:f #(rf/dispatch [::reset-looper])
-                                                             ;; TODO?
-                                                             :timeout-ms (- loop-end-ms (or seek-to-ms loop-start-ms))
-                                                             :on-set [::set-loop-timeout-id]}])]
+                        [:practaid.common/set-timeout {:f #(rf/dispatch [::reset-looper])
+                                                       ;; TODO?
+                                                       :timeout-ms (- loop-end-ms (or seek-to-ms loop-start-ms))
+                                                       :on-set [::set-loop-timeout-id]}])]
       {:db (assoc-in db [::state :loop-timeout-id] nil)
        :fx [clear-existing
             seek-player
@@ -197,3 +206,82 @@
 
 
 
+(rf/reg-event-fx
+  ::refresh-track-analysis
+  [inject-store
+   check-db-spec-interceptor]
+  (fn [{:keys [db store]} _]
+    (let [{player-state ::player/state} db
+          {:keys [external-playback-state]} player-state
+          access-token (:access-token store)
+          track (db/playback-track db)
+          track-id (or (:id track)
+                       (get-in external-playback-state [:item :id]))]
+      (when track-id
+        {:fx [[:http-xhrio {:method          :get
+                            :uri             (str "https://api.spotify.com/v1/audio-analysis/" track-id)
+                            :headers         {"Authorization" (str "Bearer " access-token)
+                                              "Content-Type"  "application/json"}
+                            :response-format (ajax/json-response-format {:keywords? true})
+                            :on-success      [::confirm-track-analysis]
+                            :on-failure      [:practaid.common/http-request-failure]}]]}))))
+
+(rf/reg-event-db
+  ::confirm-track-analysis
+  [check-db-spec-interceptor]
+  (fn [db [_ track-analysis]]
+    (assoc-in db [::state :track-analysis] track-analysis)))
+
+
+
+(rf/reg-event-fx
+  ::album-cover-img-loaded
+  [check-db-spec-interceptor]
+  (fn [{:keys [db]} [_ img-element]]
+    (let [palette (-> (new ColorThief)
+                      (. getPalette img-element 2)
+                      (js->clj))]
+      {:db (assoc-in db [::state :album-colors] palette)})))
+
+
+
+
+(rf/reg-event-fx
+  ::initialize-app
+  [inject-store
+   check-db-spec-interceptor
+   check-store-spec-interceptor]
+  (fn [{:keys [store]} _]
+    (let [{:keys [access-token expires-at refresh-token]} store
+          is-expired (boolean (or (not expires-at)
+                                  (< (js/Date. expires-at) (js/Date.))))
+          is-authorized (boolean (and access-token (not is-expired)))
+          db (-> (db/default-db)
+                 (assoc :is-authorized is-authorized))
+          init-looper-page (when is-authorized
+                             [:dispatch [::initialize-looper-page]])]
+      {:db db
+       :fx [init-looper-page
+            [:dispatch [:practaid.hotkeys/register-hotkeys]]]})))
+
+(rf/reg-event-fx
+  ::reset-app-completely
+  [inject-store
+   check-db-spec-interceptor
+   check-store-spec-interceptor]
+  (fn [_ _]
+    {:fx [[:store {}]
+          [:practaid.routes/reload-page nil]]}))
+
+
+(rf/reg-event-fx
+  ::initialize-looper-page
+  [check-db-spec-interceptor]
+  (fn [_ _]
+    {:fx [
+          [:practaid.player/initialize-spotify-sdk nil]
+          ;; TODO: store the outcome ID
+          [:practaid.common/set-interval {:f #(rf/dispatch [:practaid.player/refresh-playback-state])
+                                          :interval-ms 5000}]
+          [:dispatch [:practaid.looper/refresh-track-analysis]]
+          [:dispatch [:practaid.player/refresh-recently-played]]]}))

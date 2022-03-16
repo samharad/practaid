@@ -1,14 +1,8 @@
 (ns practaid.db
   (:require [cljs.spec.alpha :as s]
-            [clojure.set :as set]
             [practaid.spot]))
             ;; TODO fix circular dep and uncomment me
             ;[practaid.player :as player]))
-
-;; TODO
-(s/def ::track-analysis any?)
-(s/def ::album-colors (s/nilable (s/coll-of
-                                   (s/coll-of integer?))))
 
 (s/def :re-pressed.core/keydown (s/nilable any?))
 (s/def :re-pressed.core/keyup (s/nilable any?))
@@ -17,10 +11,8 @@
                                :re-pressed.core/keydown
 
                                :practaid.player/state
-                               :practaid.routes/state]
-
-                         :req-un [::track-analysis
-                                  ::album-colors]))
+                               :practaid.looper/state
+                               :practaid.routes/state]))
 
 (s/def ::db ::db-keys)
 
@@ -45,18 +37,13 @@
 
    :practaid.routes/state {:current-route nil}
 
-   ;; All looper-playback functionality built atop the player;
-   ;; looping, play, pause, seek (which are intrinsically tied to looping)
+   ;; All looper functionality built atop the player;
+   ;; looping, play, pause, seek, waveform stuff
    :practaid.looper/state {:loop-start-ms nil
                            :loop-end-ms nil
-                           :loop-timeout-id nil}
-
-   ;; Features related to external track metadata?
-   :practaid.track-metadata/state {:track-analysis nil
-                                   :album-colors nil}
-   ;; Foreign ---------------------------------------------
-   :track-analysis nil
-   :album-colors nil
+                           :loop-timeout-id nil
+                           :track-analysis nil
+                           :album-colors nil}
 
                  ,})
 

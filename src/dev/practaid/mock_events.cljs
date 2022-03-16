@@ -89,12 +89,12 @@
 
           (and (= method :get)
                (str/starts-with? uri "https://api.spotify.com/v1/me/player/recently-played"))
-          (rf/dispatch [:practaid.events/confirm-refresh-recently-played
+          (rf/dispatch [:practaid.looper/confirm-refresh-recently-played
                         {:items [{:track mock-item}]}])
 
           (and (= method :get)
                (str/starts-with? uri "https://api.spotify.com/v1/audio-analysis"))
-          (rf/dispatch [:practaid.events/confirm-track-analysis
+          (rf/dispatch [:practaid.looper/confirm-track-analysis
                         {:segments (->> (range 20)
                                         (map #(identity {:duration 1000
                                                          :start (* % 1000)

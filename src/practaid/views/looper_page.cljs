@@ -31,7 +31,7 @@
         [:div.album-cover-container
          [:img.album-cover-image {:src album-cover-url
                                   :crossOrigin "Anonymous"
-                                  :on-load #(rf/dispatch [:practaid.events/album-cover-img-loaded
+                                  :on-load #(rf/dispatch [:practaid.looper/album-cover-img-loaded
                                                           (-> js/document
                                                               (. querySelector "img.album-cover-image"))])}]])
    [:div.text-metadata-container

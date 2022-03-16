@@ -1,12 +1,12 @@
-(ns practaid.interceptors
-  ;; TODO: rename me
+(ns practaid.common
+  "For shared re-frame infra; use sparingly."
   (:require [re-frame.core :as rf]
             [cljs.spec.alpha :as s]
             [akiroz.re-frame.storage :refer [reg-co-fx!]]))
 
-(reg-co-fx! :practaid
-            {:fx :store
-             :cofx :store})
+;; TODO move store stuff into own ns
+(reg-co-fx! :practaid {:fx :store
+                       :cofx :store})
 
 (s/def :store/access-token (s/nilable string?))
 (s/def :store/expires-at (s/nilable string?))
@@ -46,7 +46,7 @@
   (fn [_ [_ result]]
     (let [{:keys [status]} result]
       (if (#{401} status)
-        {:fx [[:dispatch [:practaid.events/reset-app-completely]]]}
+        {:fx [[:dispatch [:practaid.looper/reset-app-completely]]]}
         ;; Innocent side effect
         (js/console.error result)))))
 

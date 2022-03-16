@@ -7,7 +7,7 @@
             [practaid.views.home-page :refer [home-page]]
             [practaid.views.callback-page :refer [callback-page]]
             [practaid.views.looper-page :refer [looper-page]]
-            [practaid.interceptors :refer [check-db-spec-interceptor]]
+            [practaid.common :refer [check-db-spec-interceptor]]
             [cljs.spec.alpha :as s]))
 
 (s/def ::current-route (s/nilable any?))
