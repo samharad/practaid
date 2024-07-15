@@ -22,6 +22,11 @@
     (get-in db [::player/state :device-id])))
 
 (rf/reg-sub
+  ::has-premium
+  (fn [db]
+    (get-in db [:has-premium])))
+
+(rf/reg-sub
   ::is-taking-over-playback
   (fn [db]
     (get-in db [::player/state :is-taking-over-playback])))

@@ -171,6 +171,7 @@
 
 (defn looper-page []
   (let [device-id @(rf/subscribe [:practaid.subs/device-id])
+        has-premium @(rf/subscribe [:practaid.subs/has-premium])
         is-taking-over-playback @(rf/subscribe [:practaid.subs/is-taking-over-playback])
         playback-md @(rf/subscribe [:practaid.subs/playback-metadata])
         track @(rf/subscribe [:practaid.subs/track])
@@ -189,10 +190,15 @@
     [page-wrapper
      [:div {:class (looper-page-style)}
       [:div.connection-status
+       (and (not has-premium)
+            [:h3 "Sorry, a premium subscription is required for using this tool."])
        ;; TODO make me dumber
-       (and (not device-id) [:h3.connecting "Connecting"])
+       (and (not device-id)
+            has-premium
+            [:h3.connecting "Connecting"])
        (and device-id
             (not is-playback-ours)
+            has-premium
             [:div
              [:h3.connected "Connected"]
              [:div.button-wrapper
@@ -206,13 +212,16 @@
                                      (rf/dispatch [:practaid.player/takeover-playback]))}
                "Take over playback" (and is-taking-over-playback [loading-ellipses])]]])]
       (and playback-md
+           has-premium
            [playback-metadata playback-md])
       (and track
+           has-premium
            [playback-controls {:disabled (not is-playback-ours)
                                :on-toggle-play #(rf/dispatch [:practaid.looper/toggle-play])
                                :on-next #(rf/dispatch [:practaid.looper/next-track])
                                :on-prev #(rf/dispatch [:practaid.looper/prev-track])}])
       (and loudnesses
+           has-premium
            [:div.field
             [slider {:min       0
                      :max       track-duration-ms
