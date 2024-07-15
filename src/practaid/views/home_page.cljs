@@ -83,7 +83,7 @@
        [:p "PractAid requires permission from your "
         [:img.spotify-logo
          {:src "/image/Spotify_Logo_RGB_Green.png"}]
-        " account."]]
+        " premium account."]]
       [:div.button-container
        [:button.login-button {:type "button"
                               :on-click handle-login-click}
