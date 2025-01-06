@@ -169,6 +169,9 @@
                       :justify-content "center"}]]
   [:.field {:height "100px"}])
 
+(def loudnesses
+  (repeatedly 300 rand))
+
 (defn looper-page []
   (let [device-id @(rf/subscribe [:practaid.subs/device-id])
         has-premium @(rf/subscribe [:practaid.subs/has-premium])
@@ -176,7 +179,6 @@
         playback-md @(rf/subscribe [:practaid.subs/playback-metadata])
         track @(rf/subscribe [:practaid.subs/track])
         is-playback-ours @(rf/subscribe [:practaid.subs/is-playback-ours])
-        loudnesses (repeatedly 300 rand)
         track-duration-ms @(rf/subscribe [:practaid.subs/track-duration-ms])
         loop-start-ms @(rf/subscribe [:practaid.subs/loop-start-ms])
         loop-end-ms @(rf/subscribe [:practaid.subs/loop-end-ms])
