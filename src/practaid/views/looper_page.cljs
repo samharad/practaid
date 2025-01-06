@@ -176,7 +176,7 @@
         playback-md @(rf/subscribe [:practaid.subs/playback-metadata])
         track @(rf/subscribe [:practaid.subs/track])
         is-playback-ours @(rf/subscribe [:practaid.subs/is-playback-ours])
-        loudnesses @(rf/subscribe [:practaid.subs/loudness-samples])
+        loudnesses (repeatedly 300 rand)
         track-duration-ms @(rf/subscribe [:practaid.subs/track-duration-ms])
         loop-start-ms @(rf/subscribe [:practaid.subs/loop-start-ms])
         loop-end-ms @(rf/subscribe [:practaid.subs/loop-end-ms])

@@ -132,12 +132,6 @@
   (fn [[duration pos] _]
     (/ pos duration)))
 
-(rf/reg-sub
-  ::loudness-samples
-  (fn [& _]
-      (repeatedly 300 rand)))
-
-
 
 (rf/reg-sub
   ::most-recently-played-track
