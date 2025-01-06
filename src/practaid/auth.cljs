@@ -22,9 +22,9 @@
                       "user-modify-playback-state"
                       ;; Determine whether the user has Spotify premium
                       "user-read-private"
-                      ;; Including this prevents a seemingly benign console error, but
-                      ;; we don't actually need it
-                      #_"user-read-email"]))
+                      ;; I think this is required
+                      "user-read-email"
+                      ,]))
 
 
 

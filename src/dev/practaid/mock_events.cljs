@@ -92,15 +92,6 @@
           (rf/dispatch [:practaid.looper/confirm-refresh-recently-played
                         {:items [{:track mock-item}]}])
 
-          (and (= method :get)
-               (str/starts-with? uri "https://api.spotify.com/v1/audio-analysis"))
-          (rf/dispatch [:practaid.looper/confirm-track-analysis
-                        {:segments (->> (range 20)
-                                        (map #(identity {:duration 1000
-                                                         :start (* % 1000)
-                                                         :loudness_max (- (rand-int 30)
-                                                                          30)})))}])
-
           :else (real-handler req))))))
 
 (mock-fx

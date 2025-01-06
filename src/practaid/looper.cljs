@@ -12,14 +12,12 @@
 (s/def ::loop-start-ms (s/nilable integer?))
 (s/def ::loop-end-ms(s/nilable integer?))
 (s/def ::loop-timeout-id (s/nilable any?))
-(s/def ::track-analysis (s/nilable any?))
 (s/def ::album-colors (s/nilable (s/coll-of
                                    (s/coll-of integer?))))
 
 (s/def ::state (s/keys :req-un [::loop-start-ms
                                 ::loop-end-ms
                                 ::loop-timeout-id
-                                ::track-analysis
                                 ::album-colors]))
 
 (rf/reg-event-fx
@@ -45,8 +43,6 @@
 
       {:db db
        :fx [(when is-different-track [:dispatch [::clear-looper]])
-            ;; TODO where does this one belong...
-            (when is-different-track [:dispatch [::refresh-track-analysis]])
             (when clear-loop-timeout
               [:practaid.common/clear-timeout loop-timeout-id])
             (when set-loop-timeout
@@ -207,34 +203,6 @@
 
 
 (rf/reg-event-fx
-  ::refresh-track-analysis
-  [inject-store
-   check-db-spec-interceptor]
-  (fn [{:keys [db store]} _]
-    (let [{player-state ::player/state} db
-          {:keys [external-playback-state]} player-state
-          access-token (:access-token store)
-          track (db/playback-track db)
-          track-id (or (:id track)
-                       (get-in external-playback-state [:item :id]))]
-      (when track-id
-        {:fx [[:http-xhrio {:method          :get
-                            :uri             (str "https://api.spotify.com/v1/audio-analysis/" track-id)
-                            :headers         {"Authorization" (str "Bearer " access-token)
-                                              "Content-Type"  "application/json"}
-                            :response-format (ajax/json-response-format {:keywords? true})
-                            :on-success      [::confirm-track-analysis]
-                            :on-failure      [:practaid.common/http-request-failure]}]]}))))
-
-(rf/reg-event-db
-  ::confirm-track-analysis
-  [check-db-spec-interceptor]
-  (fn [db [_ track-analysis]]
-    (assoc-in db [::state :track-analysis] track-analysis)))
-
-
-
-(rf/reg-event-fx
   ::album-cover-img-loaded
   [check-db-spec-interceptor]
   (fn [{:keys [db]} [_ img-element]]
@@ -283,5 +251,4 @@
           ;; TODO: store the outcome ID
           [:practaid.common/set-interval {:f #(rf/dispatch [:practaid.player/refresh-playback-state])
                                           :interval-ms 5000}]
-          [:dispatch [:practaid.looper/refresh-track-analysis]]
           [:dispatch [:practaid.player/refresh-recently-played]]]}))

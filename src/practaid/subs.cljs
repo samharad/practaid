@@ -47,11 +47,6 @@
     (get-in db [::player/state :recently-played])))
 
 (rf/reg-sub
-  ::track-analysis
-  (fn [db]
-    (get-in db [::looper/state :track-analysis])))
-
-(rf/reg-sub
   ::loop-start-ms
   (fn [db]
     (get-in db [::looper/state :loop-start-ms])))
@@ -139,36 +134,10 @@
 
 (rf/reg-sub
   ::loudness-samples
-  :<- [::track-analysis]
-  (fn [{:keys [segments]} [_ opts]]
-    (when (not-empty segments)
-      (let [{:keys [num-samples decibel-floor decibel-ceil]}
-            (merge {:num-samples 300 :decibel-floor -35 :decibel-ceil 0} opts)
-            total-duration (->> segments
-                                (map :duration)
-                                (reduce +))
-            regularized (loop [[seg & more-segs :as segments] segments
-                               acc []]
-                          (if (= (count acc) num-samples)
-                            acc
-                            (let [{:keys [start duration]} seg
-                                  mark (/ (count acc) num-samples)
-                                  seg-start (/ start total-duration)
-                                  seg-end (/ (+ start duration) total-duration)]
-                              (if (and (<= seg-start mark)
-                                       (< mark seg-end))
-                                (recur segments (conj acc (dissoc seg :start :duration)))
-                                (recur more-segs acc)))))
-            clamped (map (fn [seg]
-                           (let [clamped (min decibel-ceil
-                                              (max decibel-floor (:loudness_max seg)))]
-                             (- 1 (/ clamped decibel-floor))))
-                         regularized)
-            max-loudness (reduce #(max %1 %2) clamped)]
-        (map (fn [loudness]
-               (/ (js/Math.round (* (/ loudness max-loudness) 100))
-                  100))
-             clamped)))))
+  (fn [& _]
+      (repeatedly 300 rand)))
+
+
 
 (rf/reg-sub
   ::most-recently-played-track

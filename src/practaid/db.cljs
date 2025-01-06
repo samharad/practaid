@@ -43,7 +43,6 @@
    :practaid.looper/state {:loop-start-ms nil
                            :loop-end-ms nil
                            :loop-timeout-id nil
-                           :track-analysis nil
                            :album-colors nil}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
